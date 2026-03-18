@@ -412,7 +412,7 @@ This skill uses the **Externalization Pattern** for domain-specific rules:
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Main routing engine, domain inference, XML structure |
-| `reference/generic_domain_rules.md` | Language-agnostic rules (defensive programming, fail-fast, algorithmic efficiency, KISS/SOLID, statelessness) |
+| `reference/generic_rules.md` | Language-agnostic rules (defensive programming, fail-fast, algorithmic efficiency, KISS/SOLID, statelessness) |
 | `reference/python_rules.md` | Python-specific constraints (pytest, Type Hints, asyncio) |
 | `reference/devops_rules.md` | DevOps/SRE constraints (idempotency, POSIX compliance, trap cleanup, dry-run, strict mode) |
 | `reference/embedded_rules.md` | Embedded/firmware constraints (HAL, no malloc, ISR discipline, FreeRTOS, watchdogs, dual-target testing, Arduino/STM32/ESP32) |
