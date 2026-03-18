@@ -4,7 +4,7 @@ Inject these constraints into the `<domain_constraints>` tag when the task is la
 
 ---
 
-## 1. Defensive Programming (防御性编程)
+## 1. Defensive Programming 
 
 **Always explicitly validate input before processing data.**
 
@@ -58,7 +58,7 @@ for item in items:  # May be null
 
 ---
 
-## 2. Fail-Fast Principle (快速失败)
+## 2. Fail-Fast Principle 
 
 **Never swallow errors silently. Report failures immediately.**
 
@@ -118,7 +118,7 @@ function parseInput(data):
 
 ---
 
-## 3. Algorithmic Efficiency (算法效率)
+## 3. Algorithmic Efficiency
 
 **Explicitly consider Time and Space complexity for data processing.**
 
@@ -188,7 +188,7 @@ function fibonacci(n):
 
 ---
 
-## 4. KISS & SOLID (极简与开闭原则)
+## 4. KISS & SOLID 
 
 **Keep logic simple. Resist over-engineering.**
 
@@ -254,7 +254,7 @@ class XmlOutputBuilder { build(node): ... }
 
 ---
 
-## 5. Statelessness Preference (无状态优先)
+## 5. Statelessness Preference
 
 **Design functions as pure functions whenever possible.**
 
