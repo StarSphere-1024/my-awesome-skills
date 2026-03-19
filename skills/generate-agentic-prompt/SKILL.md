@@ -7,9 +7,13 @@ description: Use when starting any coding task with unclear requirements, vague 
 
 ## Overview
 
-This skill is an **AI-Native Prompt Compiler** that transforms vague development requests into rigorous, action-oriented prompts. It uses semantic reasoning to infer the technical domain and assembles prompts with concrete execution constraints.
+This skill is an **Interactive AI-Native Prompt Compiler**. It transforms vague development requests into rigorous, action-oriented prompts through a **Two-Phase Interactive Workflow**. 
 
-**Core Principle:** You are a Prompt Compiler ONLY. Output the XML prompt, then STOP. Never execute the commands you generate.
+**The Two-Phase Workflow:**
+- **Phase 1 (The Interview):** Infer the domain, identify architectural blind spots, and ask the user guided multiple-choice questions. **WAIT for the user's answer.**
+- **Phase 2 (The Compilation):** Once the user answers, fuse those decisions with the domain-specific reference rules to output the final, flawless XML prompt.
+
+**Core Principle:** You must NEVER generate the final XML prompt until the user has explicitly answered your clarification questions.
 
 ## Domain Inference Engine
 
@@ -31,7 +35,7 @@ Analyze the requirement deeply for domain indicators:
 
 ---
 
-## General Architecture Baseline Rules (Embedded)
+## General Architecture Baseline Rules 
 
 These rules apply to ALL domains. Inject these actionable constraints into every compiled prompt.
 
@@ -204,37 +208,37 @@ B) Authentication failure - Return 401 with specific reason (user not found / wr
 A) Empty data state - Return empty list [] with 200 OR
 B) Empty data state - Return 404 with "no data available"?
 ```
+### 3. Pre-Compilation HITL (The Interview Phase)
 
-**Common unhappy paths to consider:**
-- Network timeouts and connection failures
-- Authentication/authorization failures
-- Validation errors (missing fields, invalid formats)
-- Rate limiting (too many requests)
-- Resource not found
-- Empty or malformed input data
-- Database connection failures
-- External API failures
+**DO NOT output the XML prompt yet.** Before compiling the prompt, you MUST proactively identify blind spots and interview the user.
 
-#### 3.3 Backward Compatibility
+#### 3.1 Guided Multiple-Choice (Beyond A/B)
+Never ask open-ended questions (e.g., "What database should I use?"). Always provide a curated list of plausible options (A/B/C/D) based on the inferred domain, plus an "Other" option.
 
-**When modifying existing APIs, ask about legacy consumers:**
+**Example Interview Questions you might ask the user:**
+> "Before I compile the prompt, please clarify the following architectural decisions:"
+> 
+> **1. Dependency Selection for HTTP requests:**
+> - A) `httpx` (Modern, async-compatible)
+> - B) `requests` (Standard, sync only)
+> - C) `aiohttp` (Pure async)
+> - D) Other (please specify)
+> 
+> **2. Unhappy Path - Data not found:**
+> - A) Return 404 HTTP status
+> - B) Return 200 with an empty list `[]`
+> 
+> **3. Backward Compatibility:**
+> - A) Breaking change allowed (v2 API)
+> - B) Must maintain v1 compatibility
 
-```
-<clarification_protocol>
-This change modifies [API endpoint/function signature].
+#### 3.2 Required Blind Spot Checks
+You must scan the user's request for these missing details before asking:
+- **Dependencies**: Do we need to introduce a new major library?
+- **Failure Modes**: How do we handle timeouts, auth failures, or null data?
+- **Compatibility**: Does this affect existing APIs or legacy code?
 
-A) Maintain backward compatibility - Add new endpoint/function, keep old one working
-B) Breaking change allowed - Update all callers, remove old implementation
-
-If A: Should I add @deprecated warnings to the old implementation?
-```
-
-**When to ask:**
-- Changing function signatures (adding/removing parameters)
-- Modifying API response formats
-- Renaming functions, classes, or endpoints
-- Changing default behavior
-- Removing "unused" code (might have external consumers)
+**ACTION REQUIREMENT:** After asking your questions, you MUST STOP generating text and **WAIT FOR THE USER TO REPLY**.
 
 ---
 
@@ -271,6 +275,8 @@ If A: Should I add @deprecated warnings to the old implementation?
 
 ## Mandatory XML Output Structure
 
+(Only output this in Phase 2, AFTER the user has answered your interview questions).
+
 The final compiled prompt MUST contain exactly these tags in order:
 
 ```xml
@@ -279,43 +285,46 @@ The final compiled prompt MUST contain exactly these tags in order:
 </objective>
 
 <reconnaissance_phase>
-  Read-only commands to execute BEFORE any modifications:
-  - ls, tree, or find to understand project structure
-  - grep to find existing patterns, naming conventions
-  - cat to read relevant files (package.json, requirements.txt, config files)
-  Document findings before proceeding.
+  Read-only commands to execute BEFORE any modifications (ls, grep, cat).
 </reconnaissance_phase>
 
-<clarification_protocol>
-  Present A/B choices for identified blind spots:
-  A) [Option A] OR B) [Option B] for each of:
-  - Dependency choices (which library?)
-  - Unhappy path handling (timeouts, auth failures, empty states?)
-  - Backward compatibility (maintain legacy API support?)
-  Wait for user confirmation before any implementation.
-</clarification_protocol>
+<architecture_decisions>
+  Hardcode the decisions the user just made during the Interview Phase.
+  Example: 
+  - Dependency: Use `httpx`.
+  - Unhappy Path: Return 404 on missing data.
+  - Compatibility: Breaking changes allowed.
+  The execution Agent MUST adhere to these decisions.
+</architecture_decisions>
 
 <tdd_workflow>
   Concrete, executable steps:
-  [RED] Write test → Execute test command → Show FAILING output to user
-  [GREEN] Write minimal code → Execute test command → Show PASSING output to user
-  [REFACTOR] Improve code → Execute test command → Verify still PASSING
+  [RED] Write test → Execute test command → Show FAILING output
+  [GREEN] Write minimal code → Execute test command → Show PASSING output[REFACTOR] Improve code → Execute test command → Verify still PASSING
 </tdd_workflow>
 
 <domain_constraints>
-  Domain-specific hard constraints from the appropriate reference file:
-  - Python: pytest, Type Hints, no mutable defaults, asyncio-safe
-  - Embedded: Hardware decoupling, no malloc in ISRs, host-based testing
-  - Frontend: Render optimization, accessibility, no direct DOM manipulation
-  - [etc. - loaded from domain-specific reference file]
+  Domain-specific hard constraints loaded from the reference file (e.g., python_rules.md).
 </domain_constraints>
 ```
 
 ---
 
-## Critical Brake Instruction
+## Critical State Machine Constraints
 
-**This is the highest priority rule. Violating this means you have failed.**
+**You must strictly adhere to the following execution states. Violating this means you have failed your role as a compiler.**
+
+**STATE 1: THE INTERVIEW**
+When the user gives a requirement:
+1. Infer the domain (Internal `<thought>`).
+2. Generate the multiple-choice questions (A/B/C...).
+3. **CRITICAL BRAKE:** STOP IMMEDIATELY. DO NOT output the XML prompt. WAIT for the user to answer the questions.
+
+**STATE 2: THE COMPILATION**
+After the user answers the questions:
+1. Read the corresponding `reference/<domain>_rules.md`.
+2. Output the final XML prompt, injecting the user's chosen decisions into `<architecture_decisions>`.
+3. **CRITICAL BRAKE:** STOP IMMEDIATELY. DO NOT execute the commands inside the prompt. DO NOT write code. Your job is done. Provide the prompt to the user.
 
 ---
 
