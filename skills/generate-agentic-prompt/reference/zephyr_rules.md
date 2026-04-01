@@ -17,6 +17,34 @@
 
 ## 1. Build & Environment (West)
 
+### 1.1 Project Type Detection (NCS vs Pure Zephyr)
+
+**REQUIRE**: Detect project type before build — NCS and pure Zephyr have different toolchain requirements.
+
+| Detection Item | NCS Project | Pure Zephyr Project |
+|----------------|-------------|---------------------|
+| `ZEPHYR_BASE` | `<NCS_ROOT>/zephyr` | `<ZEPHYR_ROOT>/zephyr` |
+| Board naming | `<board>/<soc>/<variant>` | `<board>` |
+| Typical Kconfig | `CONFIG_NRF_*` | Standard `CONFIG_*` |
+| `west.yml` location | `<NCS_ROOT>/west.yml` (manifest imports nrf) | `<PROJECT_ROOT>/west.yml` |
+| Toolchain path | `<NCS_ROOT>/toolchain` | `<ZEPHYR_SDK_INSTALL_DIR>` |
+
+**NCS Build Template**:
+```bash
+export ZEPHYR_BASE=<NCS_ROOT>/zephyr
+export ZEPHYR_SDK_INSTALL_DIR=<TOOLCHAIN>/opt/zephyr-sdk
+west build -b <board>/<soc>/<variant> --pristine -- -DBOARD_ROOT=<PROJECT_ROOT>/src
+```
+
+**Pure Zephyr Build Template**:
+```bash
+west build -b <board> --pristine -DBOARD_ROOT=<custom_boards_path>
+```
+
+**VIOLATION**: Hardcoded paths | missing environment exports | wrong board naming convention
+
+---
+
 **REQUIRE**: Pin Zephyr kernel revision (tag/commit) in `west.yml`.
 **REQUIRE**: `west update` before every build — synchronize module state.
 **FORBID**: In-tree development — application MUST be out-of-tree (T2 topology).
