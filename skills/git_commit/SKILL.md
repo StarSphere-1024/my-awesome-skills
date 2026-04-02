@@ -97,6 +97,7 @@ Type `y` to commit, or edit the message as needed.
 | Language | English only |
 | Co-author | FORBIDDEN |
 | Breaking change | Add `!` after type, include `BREAKING CHANGE:` footer |
+| Body | ONLY for non-obvious changes; simple changes = subject line only |
 
 ### Types
 
@@ -114,7 +115,12 @@ Type `y` to commit, or edit the message as needed.
 
 ### Examples
 
-**Good:**
+**Good (simple change - one line):**
+```
+fix(api): handle null user response
+```
+
+**Good (complex change - needs body):**
 ```
 fix(api): handle null user response
 

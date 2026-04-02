@@ -18,14 +18,18 @@ Avoid:
 - Redundant phrases like "Modified file X"
 - Describing line-by-line changes
 - Vague statements like "Updated code"
+- Unnecessary body lines for simple changes
+
+Principle: SIMPLE CHANGES GET ONE-LINE MESSAGES. Only add a body when the change needs explanation.
 
 Rules:
 1. Format: <type>(<scope>): <subject>
 2. Subject: imperative mood, max 50 chars, no period
-3. Body: explain WHY and HOW, wrap at 72 chars
+3. Body: ONLY if change is non-obvious or needs explanation; simple changes = subject line ONLY
 4. Breaking changes: add ! after type and BREAKING CHANGE: footer
 5. NO co-author attributions
 6. English only
+7. Keep it concise: prefer one-line messages for simple changes
 
 Available types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
 
@@ -331,8 +335,13 @@ def generate_body(files, additions, deletions):
         deletions: Number of lines deleted
 
     Returns:
-        str: Body text
+        str: Body text or None for simple changes
     """
+    # Simple changes (1 file, <10 lines total) don't need a body
+    total_changes = additions + deletions
+    if len(files) == 1 and total_changes < 10:
+        return None
+
     if len(files) == 1:
         body = f"Modified {files[0]}"
     else:
