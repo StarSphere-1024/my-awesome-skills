@@ -18,6 +18,7 @@ A complete toolset for interacting with SEGGER J-Link RTT (Real-Time Transfer) s
 | `rtt_reader.py` | Read RTT logs, send Shell commands |
 | `rtt_clean.py` | Kill occupied J-Link processes |
 | `rtt_start.py` | One-key full workflow automation |
+| `rtt_stop.py` | Stop background JLinkGDBServer |
 
 ## Quick Reference
 
@@ -30,6 +31,7 @@ python rtt_reader.py -c "help"               # Send command, read response
 python rtt_reader.py -c "sys reboot" -t 2    # Reboot, capture output
 python rtt_reader.py --no-strip-ansi         # Keep ANSI color codes
 python rtt_reader.py -c "log level 3" --no-strip-ansi  # Keep colors
+python rtt_reader.py -c "help" --wait-for-shell -t 5   # Wait for shell prompt first
 ```
 
 | Option | Default | Description |
@@ -37,6 +39,8 @@ python rtt_reader.py -c "log level 3" --no-strip-ansi  # Keep colors
 | `-t, --timeout` | 3 | Seconds to listen for RTT output |
 | `-c, --command` | - | Zephyr Shell command to send before reading |
 | `--no-strip-ansi` | false | Keep ANSI color codes (default: stripped) |
+| `--wait-for-shell` | false | Wait for "rtt:~$" prompt before sending command |
+| `--shell-timeout` | 10 | Timeout for shell prompt detection in seconds |
 | `--host` | 127.0.0.1 | RTT server hostname |
 | `--port` | 19021 | RTT server port |
 
@@ -63,6 +67,7 @@ python rtt_clean.py --pid 12345  # Kill specific PID only
 
 ```bash
 python rtt_start.py -d nRF52840_XXAA                 # Minimal: just device
+python rtt_start.py -d nRF52840_XXAA --keep-alive    # Start GDB server in background
 python rtt_start.py -d nRF52840_XXAA --flash --elf build/zephyr/zephyr.elf
 python rtt_start.py -d nRF52840_XXAA --no-reset
 python rtt_start.py -d nRF52840_XXAA --timeout 5     # Read RTT for 5 seconds
@@ -80,6 +85,21 @@ python rtt_start.py -d nRF52840_XXAA --timeout 5     # Read RTT for 5 seconds
 | `--no-reset` | No | false | Skip target reset |
 | `--timeout, -t` | No | 3 | RTT read timeout in seconds |
 | `--no-strip-ansi` | No | false | Keep ANSI color codes (default: stripped) |
+| `--keep-alive` | No | false | Start JLinkGDBServer in background and exit |
+| `--pid-file-dir` | No | ~/.rtt_tools | Directory for PID file |
+
+### rtt_stop.py - Stop Background Server
+
+```bash
+python rtt_stop.py                       # Stop using default PID file location
+python rtt_stop.py --pid-file-dir /custom  # Use custom PID file directory
+```
+
+| Option | Description |
+|--------|-------------|
+| `--pid-file-dir` | Directory containing PID file (default: ~/.rtt_tools) |
+
+**Note:** This command only works when JLinkGDBServer was started with `rtt_start.py --keep-alive`.
 
 ## Configuration File
 
@@ -97,10 +117,11 @@ alias rtt-start='python rtt_start.py -d nRF52840_XXAA --elf build/zephyr/zephyr.
 
 ```
 1. Connect to TCP 19021 (J-Link RTT telnet port)
-2. If command provided: send with newline, wait 0.2s
-3. Non-blocking read loop with timeout
-4. Strip ANSI codes if requested
-5. Gracefully exit and return captured output
+2. If --wait-for-shell: wait for "rtt:~$" prompt (up to --shell-timeout seconds)
+3. If command provided: send with newline, wait 0.2s
+4. Non-blocking read loop with timeout
+5. Strip ANSI codes if requested
+6. Gracefully exit and return captured output
 ```
 
 ### rtt_start.py Workflow
@@ -111,6 +132,21 @@ alias rtt-start='python rtt_start.py -d nRF52840_XXAA --elf build/zephyr/zephyr.
 3. Flash ELF file (if --flash specified)
 4. Reset target (unless --no-reset)
 5. Read RTT output with clean formatting
+
+With --keep-alive:
+1-2. Same as above
+3. Write PID to ~/.rtt_tools/gdb_server.pid
+4. Exit immediately (server keeps running)
+```
+
+### rtt_stop.py Flow
+
+```
+1. Read PID from ~/.rtt_tools/gdb_server.pid
+2. Send SIGTERM to process
+3. Wait up to 5s for graceful exit
+4. If still running, send SIGKILL
+5. Remove PID file
 ```
 
 ## Error Handling
@@ -132,6 +168,8 @@ alias rtt-start='python rtt_start.py -d nRF52840_XXAA --elf build/zephyr/zephyr.
 | ANSI colors in output | Default is stripped; use `--no-strip-ansi` to keep |
 | RTT control block not found | Ensure firmware is running, not halted |
 | Too short timeout | Increase `-t` if device is slow to respond |
+| Commands not responding | Use `--wait-for-shell` to wait for shell ready |
+| Can't send multiple commands | Use `rtt_start.py --keep-alive` + `rtt_stop.py` |
 
 ## Typical Workflows
 
@@ -148,6 +186,23 @@ python rtt_reader.py -c "kernel threads" -t 2
 
 # Check memory usage
 python rtt_reader.py -c "log app_memory" -t 2
+
+# Wait for shell to be ready before sending command
+python rtt_reader.py -c "help" --wait-for-shell -t 5
+```
+
+### Continuous Debugging Session (Multiple Commands)
+```bash
+# 1. Start GDB server in background
+python rtt_start.py -d NRF54L15_M33 --keep-alive
+
+# 2. Send multiple commands without restarting server
+python rtt_reader.py -c "help" --wait-for-shell -t 3
+python rtt_reader.py -c "i2c scan i2c21" -t 5
+python rtt_reader.py -c "log level 3" -t 3
+
+# 3. Stop background server when done
+python rtt_stop.py
 ```
 
 ### Full Debug Session

@@ -9,6 +9,10 @@ This script automates the full RTT setup workflow:
 4. Connect RTT client and display logs
 
 --device is REQUIRED. All other settings have safe defaults.
+
+New features:
+- --keep-alive: Run JLinkGDBServer in background, create PID file
+- --pid-file-dir: Custom directory for PID file (default: ~/.rtt_tools)
 """
 
 import subprocess
@@ -18,6 +22,8 @@ import time
 import os
 import signal
 import atexit
+from pathlib import Path
+from typing import Optional
 
 
 # Safe defaults that don't vary by project (ports, timing)
@@ -31,6 +37,31 @@ DEFAULT_CONFIG = {
     "strip_ansi": True,
     "timeout": 3,
 }
+
+# Default PID file directory
+DEFAULT_PID_FILE_DIR = Path.home() / ".rtt_tools"
+
+
+def write_pid_file(pid: int, pid_file: Path) -> None:
+    """Write PID to file for later retrieval by rtt_stop.py."""
+    pid_file.parent.mkdir(parents=True, exist_ok=True)
+    pid_file.write_text(str(pid))
+
+
+def read_pid_file(pid_file: Path) -> Optional[int]:
+    """Read PID from file. Returns None if file doesn't exist or is invalid."""
+    if not pid_file.exists():
+        return None
+    try:
+        return int(pid_file.read_text().strip())
+    except ValueError:
+        return None
+
+
+def remove_pid_file(pid_file: Path) -> None:
+    """Remove PID file."""
+    if pid_file.exists():
+        pid_file.unlink()
 
 
 class RTTStarter:
@@ -79,8 +110,13 @@ class RTTStarter:
                 pass
         time.sleep(0.5)
 
-    def start_gdb_server(self):
-        """Start JLinkGDBServer in background."""
+    def start_gdb_server(self, keep_alive: bool = False, pid_file_dir: Optional[Path] = None):
+        """Start JLinkGDBServer in background.
+
+        Args:
+            keep_alive: If True, run in background and create PID file
+            pid_file_dir: Directory for PID file (default: ~/.rtt_tools)
+        """
         device = self.config["device"]
         speed = self.config["speed"]
         iface = self.config["interface"]
@@ -119,6 +155,18 @@ class RTTStarter:
         if self.gdb_server_proc.poll() is not None:
             print("Error: JLinkGDBServer failed to start.")
             return False
+
+        if keep_alive:
+            # Write PID file and exit - server runs in background
+            if pid_file_dir is None:
+                pid_file_dir = DEFAULT_PID_FILE_DIR
+            pid_file = pid_file_dir / "gdb_server.pid"
+            write_pid_file(self.gdb_server_proc.pid, pid_file)
+
+            print(f"JLinkGDBServer started in background (PID: {self.gdb_server_proc.pid})")
+            print(f"PID file: {pid_file}")
+            print(f"Run 'rtt_stop.py' to stop the server.")
+            return True
 
         print("JLinkGDBServer started successfully.")
         return True
@@ -227,8 +275,8 @@ q
             str(self.config["timeout"]),
         ]
 
-        if self.config.get("strip_ansi", True):
-            cmd.append("--strip-ansi")
+        if not self.config.get("strip_ansi", True):
+            cmd.append("--no-strip-ansi")
 
         print(f"\nReading RTT output (timeout={self.config['timeout']}s)...")
         print("-" * 60)
@@ -240,18 +288,29 @@ q
 
         print("-" * 60)
 
-    def run(self):
-        """Run the complete RTT startup workflow."""
+    def run(self, keep_alive: bool = False, pid_file_dir: Optional[Path] = None):
+        """Run the complete RTT startup workflow.
+
+        Args:
+            keep_alive: If True, start JLinkGDBServer in background and exit
+            pid_file_dir: Directory for PID file
+        """
         print("=" * 60)
         print("J-Link RTT One-Key Starter")
         print("=" * 60)
 
-        atexit.register(self.cleanup_on_exit)
+        # Only register cleanup if not in keep-alive mode
+        if not keep_alive:
+            atexit.register(self.cleanup_on_exit)
 
         self.kill_jlink_processes()
 
-        if not self.start_gdb_server():
+        if not self.start_gdb_server(keep_alive=keep_alive, pid_file_dir=pid_file_dir):
             return 1
+
+        # If keep-alive mode, exit after starting server
+        if keep_alive:
+            return 0
 
         if self.config.get("flash", False):
             if not self.flash_target():
@@ -272,6 +331,7 @@ def main():
         epilog="""
 Examples:
   %(prog)s -d nRF52840_XXAA                # Minimal: just device
+  %(prog)s -d nRF52840_XXAA --keep-alive   # Start GDB server in background
   %(prog)s -d nRF52832_XXAA --flash --elf build/zephyr/zephyr.elf
   %(prog)s -d nRF52840_XXAA --no-reset
   %(prog)s -d nRF52840_XXAA --timeout 5
@@ -316,6 +376,17 @@ Note: --device is REQUIRED. --elf is required when using --flash.
     parser.add_argument(
         "--no-strip-ansi", action="store_true", help="Don't strip ANSI color codes"
     )
+    parser.add_argument(
+        "--keep-alive",
+        action="store_true",
+        help="Start JLinkGDBServer in background and exit (creates PID file)",
+    )
+    parser.add_argument(
+        "--pid-file-dir",
+        type=Path,
+        default=None,
+        help=f"Directory for PID file (default: {DEFAULT_PID_FILE_DIR})",
+    )
 
     args = parser.parse_args()
 
@@ -338,7 +409,7 @@ Note: --device is REQUIRED. --elf is required when using --flash.
     }
 
     starter = RTTStarter(config)
-    sys.exit(starter.run())
+    sys.exit(starter.run(keep_alive=args.keep_alive, pid_file_dir=args.pid_file_dir))
 
 
 if __name__ == "__main__":
