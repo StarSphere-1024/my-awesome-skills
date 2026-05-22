@@ -115,9 +115,9 @@
 
 ---
 
-## Domain Constraints Template
+## Candidate Domain Constraints
 
-Use these bullets under the final prompt's `# Domain Constraints` section:
+Use these as candidates only. Select the few bullets that directly affect the requested firmware change; do not copy the full list.
 
 - **MEMORY**: FORBID malloc/free/new/delete. MANDATE static allocation or memory pools.
 - **REAL-TIME**: FORBID delay()/HAL_Delay in main paths. MANDATE non-blocking, event-driven designs.

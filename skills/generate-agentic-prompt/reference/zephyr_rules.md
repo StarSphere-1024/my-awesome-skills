@@ -244,9 +244,9 @@ tests:
 
 **VIOLATION**: Blocking polls | JSON usage | printf debugging | missing ztest coverage
 
-## Domain Constraints Template
+## Candidate Domain Constraints
 
-Use these bullets under the final prompt's `# Domain Constraints` section:
+Use these as candidates only. Select the few bullets that directly affect the requested Zephyr change; do not copy the full list.
 
 - **RECON**: `cat west.yml prj.conf *.overlay` → `ls app/src` — BEFORE coding
 

@@ -1,6 +1,6 @@
 ---
 name: generate-agentic-prompt
-description: Use when starting any coding task with unclear requirements, vague feature requests, or ambiguous bug fixes - before writing implementation code. Triggers automatic domain inference (Embedded, Python, DevOps, Zephyr, etc.) and compiles rigorous Markdown prompts with reconnaissance, HITL clarification, TDD workflow, and domain-specific constraints.
+description: Use when starting any coding task with unclear requirements, vague feature requests, or ambiguous bug fixes - before writing implementation code. Triggers automatic domain inference (Embedded, Python, DevOps, Zephyr, etc.) and compiles rigorous Markdown prompts with reconnaissance, HITL clarification, TDD workflow, and selectively applied domain constraints.
 ---
 
 # Generate Agentic Prompt
@@ -126,6 +126,28 @@ Before I compile the implementation prompt, please clarify:
 
 After asking the questions, stop and wait for the user to reply.
 
+### Domain Constraint Selection
+
+Treat domain references as candidate pools, not templates to copy.
+
+Only include constraints that directly affect this task's implementation, testing, safety, or likely failure modes. Omit generic best practices unless violating them could plausibly break this specific change.
+
+Selection rules:
+- Prefer 3-7 high-signal bullets.
+- Include a constraint only if it is relevant to the request, discovered stack, or user's interview answers.
+- Merge overlapping constraints into one bullet.
+- Do not include platform, framework, library, or subsystem rules for technologies not present in the request or repo.
+- Do not copy a full reference section into the final prompt.
+- If no extra domain rule is needed, write: `No additional domain-specific constraints beyond the baseline workflow.`
+
+Before writing `# Domain Constraints`, silently apply this relevance test:
+
+```text
+Would an implementation agent make a likely task-specific mistake if this constraint were omitted?
+```
+
+If the answer is no, omit the constraint.
+
 ## Final Markdown Output Structure
 
 Only output this in Phase 2, after the user has answered the interview questions.
@@ -171,7 +193,8 @@ The implementation agent must follow these decisions.
 
 # Domain Constraints
 
-Domain-specific constraints loaded from the selected reference file.
+Only the task-relevant constraints selected from the domain reference.
+Prefer 3-7 bullets. Do not copy the full reference.
 ```
 
 ## State Machine
@@ -187,8 +210,9 @@ When the user gives a requirement:
 
 After the user answers:
 1. Read the corresponding `reference/{domain}_rules.md`.
-2. Output the final Markdown prompt using the required section order.
-3. Stop immediately. Do not run commands, write code, or create files.
+2. Select only constraints that pass the relevance test.
+3. Output the final Markdown prompt using the required section order.
+4. Stop immediately. Do not run commands, write code, or create files.
 
 ## Red Flags
 

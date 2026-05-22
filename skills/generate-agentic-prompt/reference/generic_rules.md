@@ -1,6 +1,6 @@
 # Generic Domain Rules (Language-Agnostic)
 
-Use these constraints under the final prompt's `# Domain Constraints` section when the task is language-agnostic, algorithmic, or general software engineering (e.g., "Design a rate-limiter", "Write a regex", "Convert JSON to XML", "Architect a caching layer").
+Use these constraints as candidates when the task is language-agnostic, algorithmic, or general software engineering (e.g., "Design a rate-limiter", "Write a regex", "Convert JSON to XML", "Architect a caching layer"). Select only the few constraints that directly affect the requested task.
 
 ---
 
@@ -332,9 +332,9 @@ function processOrder(order):
 
 ---
 
-## 6. Generic Domain Constraints Template
+## 6. Candidate Domain Constraints
 
-Use this Markdown under `# Domain Constraints` when compiling language-agnostic prompts:
+Use these as candidates only. Select 3-7 relevant bullets for `# Domain Constraints`; do not copy the full block.
 
 ```markdown
 Generic software engineering constraints (language-agnostic):

@@ -1,6 +1,6 @@
 # Python Domain Constraints & Reconnaissance Rules
 
-This file provides Python-specific constraints. When the inferred domain is Python, apply these rules under the final prompt's `# Domain Constraints` section.
+This file provides Python-specific constraints. When the inferred domain is Python, use these rules as candidates and include only the task-relevant ones under the final prompt's `# Domain Constraints` section.
 
 ---
 
@@ -269,9 +269,9 @@ cat uv.lock             # uv (new standard)
 
 ---
 
-## 7. Domain Constraints Template
+## 7. Candidate Domain Constraints
 
-Copy the following Markdown into the final prompt under `# Domain Constraints`:
+Select from the following candidates for the final prompt's `# Domain Constraints`. Do not copy the full block; include only constraints that directly affect the requested change.
 
 ```markdown
 [PYTHON CORE RULES]
