@@ -115,18 +115,18 @@
 
 ---
 
-## Domain Constraints (Injection Template)
+## Domain Constraints Template
 
-<domain_constraints>
-**MEMORY**: FORBID malloc/free/new/delete. MANDATE static allocation or memory pools.
-**REAL-TIME**: FORBID delay()/HAL_Delay in main paths. MANDATE non-blocking, event-driven designs.
-**ISR**: ISRs MUST be minimal, fast, non-blocking. FORBID printf/malloc in ISRs. Offload processing.
-**FREERTOS**: MANDATE Queues/Semaphores/Mutexes for task communication. FORBID shared globals. ENABLE configASSERT. FORBID while(1) without vTaskDelay().
-**WATCHDOG**: MANDATE IWDG/WWDG. Feed in main loop, NEVER in ISR.
-**BUILD**: REQUIRE -Wall -Wextra -Werror. MANDATE CMake/modern build. USE Docker for reproducibility.
-**TESTING**: MANDATE dual-target (Host PC mocks + Target MCU). REQUIRE coverage reports.
-**SAFETY**: MANDATE assertions, HardFault handlers, input validation.
-**ARDUINO**: USE F() macro, millis(), avoid String class.
-**STM32**: PRIORITIZE DMA, check HAL returns, use HAL/LL appropriately.
-**ESP32**: PREFER ESP-IDF for production; MANDATE FreeRTOS tasks, event-driven Wi-Fi, manage power modes.
-</domain_constraints>
+Use these bullets under the final prompt's `# Domain Constraints` section:
+
+- **MEMORY**: FORBID malloc/free/new/delete. MANDATE static allocation or memory pools.
+- **REAL-TIME**: FORBID delay()/HAL_Delay in main paths. MANDATE non-blocking, event-driven designs.
+- **ISR**: ISRs MUST be minimal, fast, non-blocking. FORBID printf/malloc in ISRs. Offload processing.
+- **FREERTOS**: MANDATE Queues/Semaphores/Mutexes for task communication. FORBID shared globals. ENABLE configASSERT. FORBID while(1) without vTaskDelay().
+- **WATCHDOG**: MANDATE IWDG/WWDG. Feed in main loop, NEVER in ISR.
+- **BUILD**: REQUIRE -Wall -Wextra -Werror. MANDATE CMake/modern build. USE Docker for reproducibility.
+- **TESTING**: MANDATE dual-target (Host PC mocks + Target MCU). REQUIRE coverage reports.
+- **SAFETY**: MANDATE assertions, HardFault handlers, input validation.
+- **ARDUINO**: USE F() macro, millis(), avoid String class.
+- **STM32**: PRIORITIZE DMA, check HAL returns, use HAL/LL appropriately.
+- **ESP32**: PREFER ESP-IDF for production; MANDATE FreeRTOS tasks, event-driven Wi-Fi, manage power modes.

@@ -1,7 +1,8 @@
 # Zephyr RTOS Domain Rules
 
-<reconnaissance_targets>
-<!-- EXECUTE BEFORE ANY CODE GENERATION -->
+## Reconnaissance Targets
+
+Execute before any code generation:
 
 1. `find . -name "west.yml" -o -name "prj.conf" -o -name "*.overlay" -o -name "*.dts"`
 2. `cat west.yml` — verify `manifest.projects[].revision` is pinned (tag/commit)
@@ -10,8 +11,7 @@
 5. `cat CMakeLists.txt` — verify `find_package(Zephyr)` + `target_sources`
 6. `find app/src -type f -name "*.c"` — locate existing modules
 
-**BLOCKED**: Do not generate code until reconnaissance completes
-</reconnaissance_targets>
+**BLOCKED**: Do not generate code until reconnaissance completes.
 
 ---
 
@@ -244,23 +244,23 @@ tests:
 
 **VIOLATION**: Blocking polls | JSON usage | printf debugging | missing ztest coverage
 
-<domain_constraints>
-# ZEPHYR DOMAIN CONSTRAINTS (Ultra-Compressed)
+## Domain Constraints Template
 
-**RECON**: `cat west.yml prj.conf *.overlay` → `ls app/src` — BEFORE coding
+Use these bullets under the final prompt's `# Domain Constraints` section:
 
-**BUILD**: Pin revision in west.yml | west update mandatory | T2 out-of-tree ONLY
-**DTS**: DT_ALIAS mandatory | hardware in overlay NOT C | &label refs only
-**KCONFIG**: prj.conf + debug.conf separate | CONFIG_ prefix | no unused subsystems
-**ZBUS**: 1-to-N state broadcast (pub/sub) | ZBUS_CHANNEL_DEFINE | ZBUS_LISTEN
-**MSGQ**: 1-to-1 data pipeline | k_msgq/k_fifo | ISR→thread bridge
-**WORKQ**: k_work_submit_to_queue(&k_sys_work_q) | <1Hz tasks | NO dedicated threads
-**MEMORY**: K_THREAD_DEFINE static | K_MEM_POOL_DEFINE if dynamic | NO unbounded malloc
-**ISR**: k_fifo_put queue-only | <50 cycles | NO blocking (k_msleep/k_sem_take)
-**POWER**: CONFIG_PM=y | k_poll event-driven | ZERO blocking polling loops
-**SERIAL**: zcbor CBOR NOT JSON | CDDL schema mandatory | Socket API for network
-**SUBSYS**: Settings persist | LOG_MODULE not printf | Shell not custom CLI
-**TEST**: ztest + Twister mandatory | native_posix first | tests/unit/ structure
+- **RECON**: `cat west.yml prj.conf *.overlay` → `ls app/src` — BEFORE coding
 
-**FORBIDDEN**: In-tree code | unpinned west | hardcoded pins | dynamic threads | blocking ISR | k_msleep loops | JSON/Protobuf | printf | missing ztest
-</domain_constraints>
+- **BUILD**: Pin revision in west.yml | west update mandatory | T2 out-of-tree ONLY
+- **DTS**: DT_ALIAS mandatory | hardware in overlay NOT C | &label refs only
+- **KCONFIG**: prj.conf + debug.conf separate | CONFIG_ prefix | no unused subsystems
+- **ZBUS**: 1-to-N state broadcast (pub/sub) | ZBUS_CHANNEL_DEFINE | ZBUS_LISTEN
+- **MSGQ**: 1-to-1 data pipeline | k_msgq/k_fifo | ISR→thread bridge
+- **WORKQ**: k_work_submit_to_queue(&k_sys_work_q) | <1Hz tasks | NO dedicated threads
+- **MEMORY**: K_THREAD_DEFINE static | K_MEM_POOL_DEFINE if dynamic | NO unbounded malloc
+- **ISR**: k_fifo_put queue-only | <50 cycles | NO blocking (k_msleep/k_sem_take)
+- **POWER**: CONFIG_PM=y | k_poll event-driven | ZERO blocking polling loops
+- **SERIAL**: zcbor CBOR NOT JSON | CDDL schema mandatory | Socket API for network
+- **SUBSYS**: Settings persist | LOG_MODULE not printf | Shell not custom CLI
+- **TEST**: ztest + Twister mandatory | native_posix first | tests/unit/ structure
+
+- **FORBIDDEN**: In-tree code | unpinned west | hardcoded pins | dynamic threads | blocking ISR | k_msleep loops | JSON/Protobuf | printf | missing ztest

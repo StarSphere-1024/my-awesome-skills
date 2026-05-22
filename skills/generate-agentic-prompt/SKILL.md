@@ -1,54 +1,53 @@
 ---
 name: generate-agentic-prompt
-description: Use when starting any coding task with unclear requirements, vague feature requests, or ambiguous bug fixes - before writing implementation code. Triggers automatic domain inference (Embedded, Frontend, Python, etc.) and compiles rigorous TDD-driven prompts with reconnaissance phase, HITL clarification, and domain-specific constraints.
+description: Use when starting any coding task with unclear requirements, vague feature requests, or ambiguous bug fixes - before writing implementation code. Triggers automatic domain inference (Embedded, Python, DevOps, Zephyr, etc.) and compiles rigorous Markdown prompts with reconnaissance, HITL clarification, TDD workflow, and domain-specific constraints.
 ---
 
 # Generate Agentic Prompt
 
 ## Overview
 
-This skill is an **Interactive AI-Native Prompt Compiler**. It transforms vague development requests into rigorous, action-oriented prompts through a **Two-Phase Interactive Workflow**. 
+This skill is an interactive prompt compiler. It turns vague development requests into rigorous, action-oriented Markdown prompts through a two-phase workflow.
 
-**The Two-Phase Workflow:**
-- **Phase 1 (The Interview):** Infer the domain, identify architectural blind spots, and ask the user guided multiple-choice questions. **WAIT for the user's answer.**
-- **Phase 2 (The Compilation):** Once the user answers, fuse those decisions with the domain-specific reference rules to output the final, flawless XML prompt.
+**Phase 1: Interview**
+- Infer the domain from semantic signals, not hard-coded keyword matching.
+- Identify architectural blind spots.
+- Ask guided multiple-choice questions.
+- Stop immediately and wait for the user's answer.
 
-**Core Principle:** You must NEVER generate the final XML prompt until the user has explicitly answered your clarification questions.
+**Phase 2: Compilation**
+- After the user answers, load the matching domain reference.
+- Compile the final implementation prompt in Markdown.
+- Stop immediately after outputting the prompt. Do not execute the prompt.
 
-## Domain Inference Engine
+Never compile the final prompt until the user has explicitly answered the clarification questions.
 
-Use a `<thought>` tag for internal semantic reasoning. DO NOT use hard-coded keyword matching.
+## Domain Inference
 
-```
-<thought>
-Analyze the requirement deeply for domain indicators:
-- Debouncing, Registers, RTOS, ISRs, malloc, hardware, GPIO, interrupts → Embedded Domain → load reference/embedded_rules.md
-- Hydration errors, Virtual DOM, Tailwind, React, rendering, useEffect, components → Frontend Domain → load reference/frontend_rules.md
-- GIL, Decorators, Asyncio, pytest, type hints, asyncio, fastapi → Python Domain → load reference/python_rules.md
-- Goroutines, channels, go.mod, defer, panic/recover → Go Domain → load reference/go_rules.md
-- Lifetimes, borrow checker, cargo, unwrap, lifetimes → Rust Domain → load reference/rust_rules.md
-- Database, schema, migration, ORM, queries, transactions → Backend/Database Domain → load reference/backend_rules.md
-- Vague, broad, no clear domain signals → General Software Engineering → use embedded general rules below
-- Shell scripts, Bash automation, DevOps, data pipelines → Generic Domain → load reference/generic_domain_rules.md
-</thought>
-```
+Analyze the requirement internally for domain indicators. Do not expose hidden reasoning.
 
----
+| Signals | Domain | Reference |
+|---|---|---|
+| Zephyr, west, DTS, Kconfig, zbus, ztest, Twister | Zephyr RTOS | `reference/zephyr_rules.md` |
+| Debouncing, registers, RTOS, ISR, malloc, GPIO, FreeRTOS, Arduino, STM32, ESP32 | Embedded | `reference/embedded_rules.md` |
+| GIL, decorators, asyncio, pytest, type hints, FastAPI, Django | Python | `reference/python_rules.md` |
+| Shell scripts, Bash automation, deployment, CI, DevOps, SRE, data pipelines | DevOps/SRE | `reference/devops_rules.md` |
+| Vague, broad, algorithmic, language-agnostic, no clear domain signals | Generic software engineering | `reference/generic_rules.md` |
 
-## General Architecture Baseline Rules 
+If multiple domains apply, load the most specific reference first. For example, Zephyr wins over generic embedded.
 
-These rules apply to ALL domains. Inject these actionable constraints into every compiled prompt.
+## Baseline Rules
 
-### 1. Granular Agentic Awareness
+These rules apply to every compiled prompt.
 
-#### 1.1 Reconnaissance-First Principle
+### Reconnaissance First
 
-**BEFORE any modification, the Agent MUST execute read-only commands to understand the existing system.**
+Before any modification, the implementation agent must execute read-only commands to understand the existing system and document findings.
 
-**Mandatory reconnaissance commands:**
+Suggested reconnaissance commands:
 
 | Command | Purpose |
-|---------|---------|
+|---|---|
 | `ls -la` or `tree -L 2` | Understand project root structure |
 | `find . -name "*.py" -o -name "*.js" \| head -20` | Locate source files |
 | `grep -r "def \|class " --include="*.py" \| head -20` | Discover existing patterns |
@@ -56,352 +55,233 @@ These rules apply to ALL domains. Inject these actionable constraints into every
 | `cat .gitignore` | Understand what files are tracked |
 | `grep -r "import\|require" src/ \| head -10` | Find import conventions |
 
-**Rule:** Document reconnaissance findings BEFORE proceeding to clarification or implementation.
+The compiled prompt must require reconnaissance findings before clarification or implementation.
 
-#### 1.2 Minimal Blast Radius
+### Minimal Blast Radius
 
-**Strictly prohibit refactoring unrelated legacy code.**
+The compiled prompt must prohibit unrelated refactors.
 
-**Checklist before any change:**
-- [ ] Does this file directly relate to the requested feature?
-- [ ] Am I changing code that works just for "cleanliness"?
-- [ ] Is this refactoring explicitly requested by the user?
-- [ ] Will this change affect unrelated functionality?
+Checklist to include:
+- Does this file directly relate to the requested feature?
+- Am I changing working code just for cleanliness?
+- Was this refactor explicitly requested?
+- Can this affect unrelated behavior?
 
-**Forbidden without explicit request:**
-- Renaming unrelated functions/variables
-- Restructuring directories "for consistency"
+Forbidden without explicit request:
+- Renaming unrelated functions or variables
+- Restructuring directories for consistency
 - Updating dependencies not required for the feature
 - "While I'm here" improvements
 
-**Principle:** A working system deserves respect. Change only what the feature requires.
+### Action-Oriented TDD
 
----
+Do not merely say "Red-Green-Refactor." Compile concrete actions with mandatory output display.
 
-### 2. Action-Oriented TDD Workflow
+**RED**
+1. Write the test first.
+2. Run the specific test command immediately.
+3. Show the failing output.
+4. Explain why the failure proves the missing requirement is captured.
 
-**DO NOT just write "Red-Green-Refactor".** Translate into concrete, executable actions with mandatory output display.
+**GREEN**
+1. Write the minimum code needed to pass.
+2. Re-run the same test command.
+3. Show the passing output.
+4. Stop adding behavior once the test passes.
 
-#### 2.1 [RED] Phase - Prove the Test Fails
+**REFACTOR**
+1. Improve readability only under passing tests.
+2. Re-run all related tests after each refactor.
+3. Revert immediately if tests fail.
 
-**Steps:**
-1. Write the test code first (test file, test function, assertions)
-2. **MANDATORY:** Execute the test command immediately
-3. **MANDATORY:** Display the FAILING error log to the user
-4. Explain WHY the failure proves the test captures the missing requirement
+### Human-in-the-Loop
 
-**Example output format:**
-```
-[RED] Test written: tests/test_auth.py::test_login_returns_token
+Before compiling the final prompt, proactively identify blind spots and ask guided multiple-choice questions. Avoid open-ended questions when a curated choice set is possible.
 
-Running: pytest tests/test_auth.py::test_login_returns_token -v
+Blind spots to check:
+- Dependencies: Does this require a new major library?
+- Failure modes: How should timeouts, auth failures, null data, empty data, or partial failures behave?
+- Compatibility: Does this affect existing APIs, data contracts, or legacy behavior?
+- Scope: Which files, platforms, or workflows are in or out?
 
-=== FAILURES ===
-tests/test_auth.py:12: in test_login_returns_token
-    assert response.status_code == 200
-E   AssertionError: assert 404 == 200
-    (Endpoint not yet implemented)
+Question format:
 
-This failure is EXPECTED - it proves the test correctly identifies
-the missing login endpoint.
-```
+```markdown
+Before I compile the implementation prompt, please clarify:
 
-**Red Flags - You Are Violating TDD:**
-- Writing implementation code before the test fails
-- Skipping test execution ("obviously it will fail")
-- Writing a test that passes immediately
-- Not showing the failure output to the user
+1. Dependency selection for HTTP requests:
+   - A. `httpx` - modern, async-compatible
+   - B. `requests` - standard synchronous client
+   - C. `aiohttp` - pure async client
+   - D. Other
 
-#### 2.2 [GREEN] Phase - Minimal Code to Pass
+2. Data-not-found behavior:
+   - A. Return 404
+   - B. Return 200 with an empty list
 
-**Steps:**
-1. Write the MINIMUM business logic necessary to make the test pass
-2. **MANDATORY:** Re-execute the test command
-3. **MANDATORY:** Display the PASSING output to the user
-4. Do NOT add extra features, error handling, or optimizations yet
-
-**Example output format:**
-```
-[GREEN] Implementation written: src/auth.py::login()
-
-Running: pytest tests/test_auth.py::test_login_returns_token -v
-
-=== test session starts ===
-tests/test_auth.py::test_login_returns_token PASSED
-
-The test passes. The login endpoint now returns 200 with a token.
+3. Backward compatibility:
+   - A. Breaking change allowed
+   - B. Must preserve v1 behavior
 ```
 
-**Green Phase Constraints:**
-- No error handling beyond what the test requires
-- No input validation unless the test checks it
-- No "just in case" code
-- If the test passes, STOP writing code
+After asking the questions, stop and wait for the user to reply.
 
-#### 2.3 [REFACTOR] Phase - Optimize Under Protection
+## Final Markdown Output Structure
 
-**Steps:**
-1. Identify code smells (duplication, long functions, unclear names)
-2. Refactor for readability and maintainability
-3. **MANDATORY:** Re-execute ALL related tests
-4. **MANDATORY:** Verify tests still pass - if not, revert immediately
+Only output this in Phase 2, after the user has answered the interview questions.
 
-**Example output format:**
-```
-[REFACTOR] Extracted token generation to src/utils/jwt.py::generate_token()
+The final compiled prompt must use these Markdown sections in order:
 
-Running: pytest tests/test_auth.py -v
+```markdown
+# Objective
 
-=== test session starts ===
-tests/test_auth.py::test_login_returns_token PASSED
-tests/test_auth.py::test_invalid_credentials_returns_401 PASSED
+Clear, single-sentence statement of what to build or fix.
 
-All tests still passing after refactoring.
-```
+# Reconnaissance Phase
 
-**Refactoring Rules:**
-- One refactoring at a time
-- Tests MUST pass after each refactoring
-- If tests fail, revert and try a different approach
-- Do not change behavior during refactoring
+Read-only commands to execute before any modifications, plus a requirement to document findings.
 
----
+# Architecture Decisions
 
-### 3. Deep HITL (Human-in-the-Loop) Mechanism
+The decisions the user made during the interview.
 
-**Force proactive identification of blind spots. Present A/B choices BEFORE implementation.**
+- Dependency: Use `...`.
+- Failure handling: ...
+- Compatibility: ...
 
-#### 3.1 Dependency Blind Spots
+The implementation agent must follow these decisions.
 
-**When the feature requires external libraries, NEVER assume. Ask:**
+# TDD Workflow
 
-```
-<clarification_protocol>
-This feature requires [capability]. Which library should I use?
+## RED
+- Write ...
+- Run ...
+- Show ...
+- Explain ...
 
-A) [Library A] - [Brief benefit: e.g., "Lightweight, no dependencies"]
-B) [Library B] - [Brief benefit: e.g., "Full-featured, industry standard"]
+## GREEN
+- Implement ...
+- Run ...
+- Show ...
 
-If you have a preference for a different library, let me know.
+## REFACTOR
+- Refactor ...
+- Run ...
+- Verify ...
+
+# Domain Constraints
+
+Domain-specific constraints loaded from the selected reference file.
 ```
 
-**Common dependency choices to present:**
-- HTTP client: `requests` vs `httpx` (sync) vs `aiohttp` (async)
-- JSON validation: `pydantic` vs `marshmallow` vs `attrs`
-- Testing: `pytest` vs `unittest` vs `nose2`
-- Database: `sqlalchemy` vs `peewee` vs raw driver
+## State Machine
 
-#### 3.2 Unhappy Paths
+### State 1: Interview
 
-**Ask how to handle failure scenarios BEFORE coding:**
-
-```
-<clarification_protocol>
-How should the system handle these failure scenarios?
-
-A) Network timeout after 30s - Retry 3 times with exponential backoff OR
-B) Network timeout after 30s - Fail immediately with clear error?
-
-A) Authentication failure - Return 401 with generic "invalid credentials" OR
-B) Authentication failure - Return 401 with specific reason (user not found / wrong password)?
-
-A) Empty data state - Return empty list [] with 200 OR
-B) Empty data state - Return 404 with "no data available"?
-```
-### 3. Pre-Compilation HITL (The Interview Phase)
-
-**DO NOT output the XML prompt yet.** Before compiling the prompt, you MUST proactively identify blind spots and interview the user.
-
-#### 3.1 Guided Multiple-Choice (Beyond A/B)
-Never ask open-ended questions (e.g., "What database should I use?"). Always provide a curated list of plausible options (A/B/C/D) based on the inferred domain, plus an "Other" option.
-
-**Example Interview Questions you might ask the user:**
-> "Before I compile the prompt, please clarify the following architectural decisions:"
-> 
-> **1. Dependency Selection for HTTP requests:**
-> - A) `httpx` (Modern, async-compatible)
-> - B) `requests` (Standard, sync only)
-> - C) `aiohttp` (Pure async)
-> - D) Other (please specify)
-> 
-> **2. Unhappy Path - Data not found:**
-> - A) Return 404 HTTP status
-> - B) Return 200 with an empty list `[]`
-> 
-> **3. Backward Compatibility:**
-> - A) Breaking change allowed (v2 API)
-> - B) Must maintain v1 compatibility
-
-#### 3.2 Required Blind Spot Checks
-You must scan the user's request for these missing details before asking:
-- **Dependencies**: Do we need to introduce a new major library?
-- **Failure Modes**: How do we handle timeouts, auth failures, or null data?
-- **Compatibility**: Does this affect existing APIs or legacy code?
-
-**ACTION REQUIREMENT:** After asking your questions, you MUST STOP generating text and **WAIT FOR THE USER TO REPLY**.
-
----
-
-### 4. HITL + TDD Combined Checklist
-
-**Before ANY implementation, verify all of these:**
-
-- [ ] Reconnaissance completed and documented
-- [ ] Dependency choices presented (A/B) and confirmed
-- [ ] Unhappy path handling confirmed (A/B)
-- [ ] Backward compatibility approach confirmed (A/B)
-- [ ] Test written and FAILING output shown to user
-- [ ] User explicitly confirmed to proceed after each phase
-
-**Never proceed on assumptions. When in doubt, pause and ask.**
-
----
-
-### 5. Common Rationalizations and Counters
-
-| Excuse | Reality |
-|--------|---------|
-| "I'll just check the structure quickly" | That's reconnaissance. Do it properly with documented output. |
-| "This test is obviously correct" | Show me the failing output. Prove it. |
-| "I know which library they want" | You don't. Ask. |
-| "I'll add error handling while I'm here" | That's not minimal. Stop at green. |
-| "This old code is messy, let me clean it" | Not requested. Minimal blast radius. |
-| "Tests after achieves the same thing" | Tests-first proves requirements. Tests-after proves code. Different. |
-| "I'll start coding and ask questions later" | Later is too late. Clarify first. |
-
-**All of these mean: STOP. Follow the workflow. Ask before proceeding.**
-
----
-
-## Mandatory XML Output Structure
-
-(Only output this in Phase 2, AFTER the user has answered your interview questions).
-
-The final compiled prompt MUST contain exactly these tags in order:
-
-```xml
-<objective>
-  Clear, single-sentence statement of what to build or fix.
-</objective>
-
-<reconnaissance_phase>
-  Read-only commands to execute BEFORE any modifications (ls, grep, cat).
-</reconnaissance_phase>
-
-<architecture_decisions>
-  Hardcode the decisions the user just made during the Interview Phase.
-  Example: 
-  - Dependency: Use `httpx`.
-  - Unhappy Path: Return 404 on missing data.
-  - Compatibility: Breaking changes allowed.
-  The execution Agent MUST adhere to these decisions.
-</architecture_decisions>
-
-<tdd_workflow>
-  Concrete, executable steps:
-  [RED] Write test → Execute test command → Show FAILING output
-  [GREEN] Write minimal code → Execute test command → Show PASSING output[REFACTOR] Improve code → Execute test command → Verify still PASSING
-</tdd_workflow>
-
-<domain_constraints>
-  Domain-specific hard constraints loaded from the reference file (e.g., python_rules.md).
-</domain_constraints>
-```
-
----
-
-## Critical State Machine Constraints
-
-**You must strictly adhere to the following execution states. Violating this means you have failed your role as a compiler.**
-
-**STATE 1: THE INTERVIEW**
 When the user gives a requirement:
-1. Infer the domain (Internal `<thought>`).
-2. Generate the multiple-choice questions (A/B/C...).
-3. **CRITICAL BRAKE:** STOP IMMEDIATELY. DO NOT output the XML prompt. WAIT for the user to answer the questions.
+1. Infer the domain internally.
+2. Generate multiple-choice clarification questions.
+3. Stop immediately. Do not output the final prompt. Wait for the user to answer.
 
-**STATE 2: THE COMPILATION**
-After the user answers the questions:
-1. Read the corresponding `reference/<domain>_rules.md`.
-2. Output the final XML prompt, injecting the user's chosen decisions into `<architecture_decisions>`.
-3. **CRITICAL BRAKE:** STOP IMMEDIATELY. DO NOT execute the commands inside the prompt. DO NOT write code. Your job is done. Provide the prompt to the user.
+### State 2: Compilation
 
----
+After the user answers:
+1. Read the corresponding `reference/{domain}_rules.md`.
+2. Output the final Markdown prompt using the required section order.
+3. Stop immediately. Do not run commands, write code, or create files.
 
-**CRITICAL WARNING:** You are acting EXCLUSIVELY as a Prompt Compiler. After you output the XML prompt, you MUST STOP immediately. DO NOT execute the commands inside the prompt. DO NOT start writing the actual code, running tests, or creating files. Wait for the user to review the prompt and answer your A/B choices!
+## Red Flags
 
----
+If you feel an urge to do any of these, stop and return to the state machine:
+- Start reconnaissance yourself
+- Save time by coding immediately
+- Assume the user wants the fastest default library
+- Execute the compiled prompt
+- Add implementation after producing the prompt
 
-**Red Flags - You Are About to Violate:**
+## Example
 
-- Feeling urge to "just start" the reconnaissance commands yourself
-- Thinking "I'll save time by doing it now"
-- Believing "the user wants me to move fast"
-- Rationalizing "I can always undo it"
+Input:
 
-**All of these mean: STOP. Output XML. WAIT.**
-
----
-
-## Example Usage
-
-**Input:**
-```
+```text
 /requirement: Add user authentication to my Express API
 ```
 
-**Output:**
-```xml
-<objective>
-Implement JWT-based user authentication for an Express.js API with login, logout, and protected route middleware.
-</objective>
+Phase 1 output:
 
-<reconnaissance_phase>
-Before any implementation, execute these read-only commands:
-1. ls -la to understand project root structure
-2. cat package.json to identify existing dependencies and Express version
-3. grep -r "auth" --include="*.js" src/ to find existing auth patterns
-4. cat src/routes/index.js or equivalent to understand routing conventions
-Document findings before proceeding to clarification.
-</reconnaissance_phase>
+```markdown
+Before I compile the implementation prompt, please clarify:
 
-<clarification_protocol>
-After reconnaissance, present these A/B choices:
-A) JWT in httpOnly cookies (more secure) OR B) JWT in Authorization header (simpler, CORS-friendly)?
-A) PostgreSQL with sequelize ORM OR B) MongoDB with mongoose?
-A) Rate limit: 5 attempts/minute (strict) OR B) 10 attempts/minute (user-friendly)?
-A) Legacy API compatibility needed OR B) Breaking changes allowed?
+1. Token storage:
+   - A. JWT in httpOnly cookies - safer against token theft
+   - B. JWT in Authorization header - simpler for API clients
+   - C. Other
 
-WAIT for user responses before any implementation.
-</clarification_protocol>
+2. Persistence layer:
+   - A. Use the existing database/ORM discovered during reconnaissance
+   - B. Add a new persistence dependency
+   - C. Other
 
-<tdd_workflow>
-[RED] Write test: src/tests/auth.test.js
-  - Test: POST /login with valid credentials returns 200 + token
-  - Execute: npm test -- auth.test.js
-  - SHOW the failing test output to user
+3. Rate limit:
+   - A. 5 attempts per minute
+   - B. 10 attempts per minute
+   - C. No rate limit for this change
 
-[GREEN] Implement: src/routes/auth.js (minimal code to pass)
-  - Execute: npm test -- auth.test.js
-  - SHOW the passing test output to user
-
-[REFACTOR] Extract token generation to src/utils/jwt.js
-  - Execute: npm test -- auth.test.js
-  - VERIFY tests still passing
-</tdd_workflow>
-
-<domain_constraints>
-- NEVER store JWT secrets in code - use process.env.JWT_SECRET
-- Implement rate limiting with express-rate-limit (configured per user choice)
-- Hash passwords with bcrypt (cost factor 12+ minimum)
-- Implement token expiration (15min access token, 7day refresh token)
-- Add input validation with express-validator or zod
-- CORS configured for specific origins only (no wildcard)
-- Return 401 for invalid/expired tokens, 400 for validation errors
-</domain_constraints>
+4. Compatibility:
+   - A. Preserve existing API behavior
+   - B. Breaking changes allowed
 ```
 
----
+Phase 2 output:
+
+```markdown
+# Objective
+
+Implement JWT-based user authentication for an Express.js API with login, logout, and protected route middleware.
+
+# Reconnaissance Phase
+
+Before any implementation, execute read-only commands:
+1. `ls -la`
+2. `cat package.json`
+3. `grep -r "auth" --include="*.js" src/`
+4. `cat src/routes/index.js` or the equivalent route entrypoint
+
+Document the project structure, dependency manager, route conventions, and existing auth-related code before editing.
+
+# Architecture Decisions
+
+- Token storage: JWT in httpOnly cookies.
+- Persistence: Use the existing database/ORM discovered during reconnaissance.
+- Rate limit: 5 attempts per minute.
+- Compatibility: Preserve existing API behavior.
+
+# TDD Workflow
+
+## RED
+- Write `src/tests/auth.test.js`.
+- Test `POST /login` with valid credentials returns 200 and a token.
+- Run `npm test -- auth.test.js`.
+- Show the failing output and explain why the failure captures the missing endpoint.
+
+## GREEN
+- Implement the smallest auth route and middleware needed to pass.
+- Run `npm test -- auth.test.js`.
+- Show the passing output.
+
+## REFACTOR
+- Extract token generation only if duplication appears.
+- Run `npm test -- auth.test.js`.
+- Verify all related tests still pass.
+
+# Domain Constraints
+
+- Do not store JWT secrets in code; use environment configuration.
+- Hash passwords with a proven password hashing library.
+- Return 401 for invalid or expired tokens.
+- Add input validation for auth payloads.
+- Configure CORS for explicit origins only.
+```
 
 ## Trigger Patterns
 
@@ -409,20 +289,18 @@ Use this skill when:
 - Requirement is vague: "add X", "fix Y", "optimize Z"
 - Starting a feature from scratch with unclear constraints
 - Unclear which domain-specific engineering rules apply
-- Need structured, TDD-compliant development plan before coding
-- Want to ensure Human-in-the-Loop before architectural decisions
-
----
+- Need a structured, TDD-compliant development prompt before coding
+- Need Human-in-the-Loop confirmation before architectural decisions
 
 ## File Organization
 
-This skill uses the **Externalization Pattern** for domain-specific rules:
+This skill uses external references for domain-specific constraints:
 
 | File | Purpose |
-|------|---------|
-| `SKILL.md` | Main routing engine, domain inference, XML structure |
-| `reference/generic_rules.md` | Language-agnostic rules (defensive programming, fail-fast, algorithmic efficiency, KISS/SOLID, statelessness) |
-| `reference/python_rules.md` | Python-specific constraints (pytest, Type Hints, asyncio) |
-| `reference/devops_rules.md` | DevOps/SRE constraints (idempotency, POSIX compliance, trap cleanup, dry-run, strict mode) |
-| `reference/embedded_rules.md` | Embedded/firmware constraints (HAL, no malloc, ISR discipline, FreeRTOS, watchdogs, dual-target testing, Arduino/STM32/ESP32) |
-| `reference/zephyr_rules.md` | Zephyr RTOS constraints (west.yml manifest, DTS/DT_ALIAS, ZBus pub/sub, k_sys_work_q, static allocation, CONFIG_PM, zcbor, ztest/Twister) |
+|---|---|
+| `SKILL.md` | Main routing engine, domain inference, Markdown output structure |
+| `reference/generic_rules.md` | Language-agnostic rules |
+| `reference/python_rules.md` | Python-specific constraints |
+| `reference/devops_rules.md` | DevOps/SRE constraints |
+| `reference/embedded_rules.md` | Embedded/firmware constraints |
+| `reference/zephyr_rules.md` | Zephyr RTOS constraints |

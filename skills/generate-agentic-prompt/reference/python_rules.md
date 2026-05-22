@@ -1,6 +1,6 @@
 # Python Domain Constraints & Reconnaissance Rules
 
-This file provides Python-specific constraints. When the inferred domain is Python, you MUST apply these rules and inject the provided `<domain_constraints>` template into your final output.
+This file provides Python-specific constraints. When the inferred domain is Python, apply these rules under the final prompt's `# Domain Constraints` section.
 
 ---
 
@@ -140,7 +140,7 @@ def process_data(data):
 
 - External I/O (Databases, Redis, HTTP APIs, Filesystem) MUST be isolated in tests.
 - Use `unittest.mock` (specifically `patch`, `MagicMock`) or `pytest-mock` to stub these external boundaries.
-- Never write a test that makes a real network request without the user's explicit `<clarification_protocol>` approval.
+- Never write a test that makes a real network request without explicit user approval during the clarification phase.
 
 ### 4.1 Mock Categories
 
@@ -269,12 +269,11 @@ cat uv.lock             # uv (new standard)
 
 ---
 
-## 7. Injection Template (ACTION REQUIRED)
+## 7. Domain Constraints Template
 
-*Copy the following XML block exactly and inject it into your final Prompt output under the domain constraints section:*
+Copy the following Markdown into the final prompt under `# Domain Constraints`:
 
-```xml
-<domain_constraints>
+```markdown
 [PYTHON CORE RULES]
 1. ECOSYSTEM: Strictly use the project's existing dependency manager (uv/poetry/pip) and linter (ruff/black/mypy).
 2. TDD & MOCKING: Use `pytest`. You MUST use `unittest.mock` to isolate all database and network I/O.
@@ -283,7 +282,6 @@ cat uv.lock             # uv (new standard)
    - DO NOT use mutable default arguments (use `None`).
    - DO NOT use synchronous blocking calls (e.g., `requests`, `time.sleep`) inside `async` functions.
    - DO NOT use bare `except` clauses.
-</domain_constraints>
 ```
 
 ---

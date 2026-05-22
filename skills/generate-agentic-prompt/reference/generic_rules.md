@@ -1,6 +1,6 @@
 # Generic Domain Rules (Language-Agnostic)
 
-Inject these constraints into the `<domain_constraints>` tag when the task is language-agnostic, algorithmic, or general software engineering (e.g., "Design a rate-limiter", "Write a regex", "Convert JSON to XML", "Architect a caching layer").
+Use these constraints under the final prompt's `# Domain Constraints` section when the task is language-agnostic, algorithmic, or general software engineering (e.g., "Design a rate-limiter", "Write a regex", "Convert JSON to XML", "Architect a caching layer").
 
 ---
 
@@ -334,10 +334,9 @@ function processOrder(order):
 
 ## 6. Generic Domain Constraints Template
 
-**Inject this into `<domain_constraints>` when compiling language-agnostic prompts:**
+Use this Markdown under `# Domain Constraints` when compiling language-agnostic prompts:
 
-```xml
-<domain_constraints>
+```markdown
 Generic software engineering constraints (language-agnostic):
 
 DEFENSIVE PROGRAMMING:
@@ -369,7 +368,6 @@ STATELESSNESS:
 - Avoid mutation of input data - return new copies
 - Isolate side effects (IO, network, database) from business logic
 - No hidden global state dependencies
-</domain_constraints>
 ```
 
 ---
