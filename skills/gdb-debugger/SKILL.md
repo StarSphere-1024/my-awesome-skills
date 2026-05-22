@@ -1,6 +1,6 @@
 ---
 name: gdb-debugger
-description: Use this skill whenever debugging native C, C++, or mixed C/C++ programs with GDB, including segmentation faults, SIGABRT, core dumps, hangs, deadlocks, infinite loops, failing native tests, invalid pointers, memory corruption, stack traces, JNI/native-extension crashes, or low-level runtime failures. This skill enforces evidence-first debugging: reproduce the issue, collect bounded GDB evidence, inspect backtraces, locals, args, and threads, identify the first bad state, make the smallest fix, rebuild, and verify before concluding.
+description: Debug native C/C++ crashes, core dumps, hangs, memory corruption, bad pointers, native test failures, and JNI/native-extension crashes with GDB.
 ---
 
 # GDB Debugger
