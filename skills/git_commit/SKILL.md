@@ -5,18 +5,6 @@ description: Use when committing staged changes with a Conventional Commit.
 
 # Git Commit
 
-## Overview
-
-This skill stays simple, but keeps the useful discipline from the original version:
-
-1. Check that changes are staged
-2. Check whether the commit is reasonably atomic
-3. Read the staged diff to infer intent
-4. Write a high-quality Conventional Commit
-5. Commit directly with `git`
-
-Do not use helper scripts, external packages, or interactive CLI prompts. The agent should do the work directly with `git`.
-
 ## When to Use
 
 Use this skill when:
