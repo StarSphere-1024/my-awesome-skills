@@ -1,479 +1,189 @@
 #!/usr/bin/env python3
-"""
-Tests for unified RTT CLI (rtt.py).
 
-These tests verify the CLI subcommands work correctly:
-- daemon start|stop|status
-- read --lines --since --grep
-- send
-- shell
-
-JLinkGDBServer is auto-started by conftest.py if not running.
-"""
-
-import os
-import sys
-import time
-import signal
 import socket
-import tempfile
-import shutil
-import subprocess
+import sys
+import threading
+from io import StringIO
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Optional
-
-import pytest
-
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from rtt_daemon import RTTDaemon, check_rtt_server
-
-# Import fixture helpers from conftest
-from conftest import check_rtt_available, RTT_HOST, RTT_PORT
-
-# Test constants
-SCRIPT_DIR = Path(__file__).parent.parent / "scripts"
-RTT_SCRIPT = SCRIPT_DIR / "rtt.py"
-
-
-@pytest.fixture
-def temp_dir() -> Path:
-    """Create a temporary directory for test files."""
-    tmp = Path(tempfile.mkdtemp(prefix="rtt_cli_test_"))
-    yield tmp
-    shutil.rmtree(tmp, ignore_errors=True)
-
-
-@pytest.fixture
-def sample_log_file(temp_dir: Path) -> Path:
-    """Create a sample log file with test data."""
-    log_file = temp_dir / "rtt.log"
-    now = datetime.now()
-
-    lines = []
-    for i in range(10):
-        timestamp = (now - timedelta(seconds=i)).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-        lines.append(f"[T:{timestamp}] [INFO] Test message {i}")
-
-    log_file.write_text('\n'.join(lines) + '\n')
-    return log_file
-
-
-class TestDaemonLifecycle:
-    """Tests for daemon lifecycle management via CLI."""
-
-    def test_cli_daemon_start_creates_pid_file(self, temp_dir: Path):
-        """Verify daemon start creates PID file."""
-        if not check_rtt_available():
-            pytest.skip(f"RTT server not available at {RTT_HOST}:{RTT_PORT}")
-
-        pid_file = temp_dir / "test.pid"
-        log_file = temp_dir / "test.log"
-
-        # Start daemon in background using RTTDaemon class directly
-        # (CLI daemon start runs forever, so we test the underlying functionality)
-        from rtt_daemon import RTTDaemon
-        daemon = RTTDaemon(pid_file=pid_file, log_file=log_file)
-        daemon.start()
-        time.sleep(0.5)
-
-        try:
-            # Verify PID file was created
-            assert pid_file.exists(), "PID file should be created on daemon start"
-            content = pid_file.read_text().strip()
-            assert content.isdigit(), "PID file should contain numeric PID"
-            assert int(content) == daemon.pid
-        finally:
-            daemon.cleanup()
-
-    def test_cli_daemon_status_shows_running(self, temp_dir: Path):
-        """Verify daemon status shows running daemon."""
-        if not check_rtt_available():
-            pytest.skip(f"RTT server not available at {RTT_HOST}:{RTT_PORT}")
-
-        pid_file = temp_dir / "test.pid"
-        log_file = temp_dir / "test.log"
-
-        daemon = RTTDaemon(pid_file=pid_file, log_file=log_file)
-        daemon.start()
-        time.sleep(0.5)
-
-        try:
-            result = subprocess.run(
-                [sys.executable, str(RTT_SCRIPT), "daemon", "status",
-                 "--pid-file", str(pid_file),
-                 "--log-file", str(log_file)],
-                capture_output=True,
-                text=True,
-            )
-
-            assert result.returncode == 0, f"Status should succeed: {result.stderr}"
-            assert "running" in result.stdout.lower()
-            assert f"PID: {daemon.pid}" in result.stdout
-        finally:
-            daemon.cleanup()
-
-    def test_cli_daemon_prevents_multiple_instances(self, temp_dir: Path):
-        """Verify cannot start multiple daemon instances."""
-        if not check_rtt_available():
-            pytest.skip(f"RTT server not available at {RTT_HOST}:{RTT_PORT}")
-
-        pid_file = temp_dir / "test.pid"
-        log_file1 = temp_dir / "test1.log"
-        log_file2 = temp_dir / "test2.log"
-
-        daemon1 = RTTDaemon(pid_file=pid_file, log_file=log_file1)
-        daemon1.start()
-        time.sleep(0.5)
-
-        try:
-            result = subprocess.run(
-                [sys.executable, str(RTT_SCRIPT), "daemon", "start",
-                 "--pid-file", str(pid_file),
-                 "--log-file", str(log_file2)],
-                capture_output=True,
-                text=True,
-                timeout=3,
-            )
-
-            # Should fail because daemon is already running
-            assert result.returncode != 0 or "already running" in result.stderr.lower()
-        finally:
-            daemon1.cleanup()
-
-
-class TestReadCommand:
-    """Tests for 'read' subcommand."""
-
-    def test_cli_read_lines_returns_latest(self, sample_log_file: Path, temp_dir: Path):
-        """Verify read --lines returns latest N lines."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read",
-             "--log-dir", str(temp_dir),
-             "--lines", "5"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0, f"Read failed: {result.stderr}"
-        lines = result.stdout.strip().split('\n')
-        assert len(lines) == 5
-        # Should return newest first
-        assert "Test message 9" in lines[0]
-
-    def test_cli_read_with_strip_ansi(self, temp_dir: Path):
-        """Verify --strip-ansi and --no-strip-ansi options."""
-        log_file = temp_dir / "rtt.log"
-        log_file.write_text("\x1b[31mRed text\x1b[0m\nPlain text\n")
-
-        # Default: strip ANSI
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read",
-             "--log-dir", str(temp_dir),
-             "--lines", "10"],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        assert "\x1b[" not in result.stdout  # ANSI stripped
-
-        # With --no-strip-ansi
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read",
-             "--log-dir", str(temp_dir),
-             "--lines", "10",
-             "--no-strip-ansi"],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        assert "\x1b[31m" in result.stdout  # ANSI kept
-
-    def test_cli_read_grep_filter(self, sample_log_file: Path, temp_dir: Path):
-        """Verify --grep filters lines."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read",
-             "--log-dir", str(temp_dir),
-             "--grep", "Test message 5"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        assert "Test message 5" in result.stdout
-        # Should only have one matching line
-        lines = [l for l in result.stdout.strip().split('\n') if l.strip()]
-        assert len(lines) == 1
-
-    def test_cli_read_since(self, sample_log_file: Path, temp_dir: Path):
-        """Verify --since reads logs from time delta."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read",
-             "--log-dir", str(temp_dir),
-             "--since", "60"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        # Should have some lines from last 60 seconds
-        lines = [l for l in result.stdout.strip().split('\n') if l.strip()]
-        assert len(lines) > 0
-
-    def test_cli_read_empty_dir(self, temp_dir: Path):
-        """Verify read handles empty directory."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read",
-             "--log-dir", str(temp_dir),
-             "--lines", "10"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        assert "no matching lines" in result.stdout.lower() or result.stdout.strip() == ""
-
-
-class TestSendCommand:
-    """Tests for 'send' subcommand."""
-
-    def test_cli_send_command(self):
-        """Verify send command works with RTT server."""
-        if not check_rtt_available():
-            pytest.skip(f"RTT server not available at {RTT_HOST}:{RTT_PORT}")
-
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "send", "help",
-             "--host", RTT_HOST,
-             "--port", str(RTT_PORT)],
-            capture_output=True,
-            text=True,
-        )
-
-        # Should get some response from RTT
-        assert result.returncode == 0 or len(result.stdout) > 0
-
-    def test_cli_send_fails_without_server(self):
-        """Verify send fails gracefully when server not running."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "send", "help",
-             "--timeout", "1",
-             "--host", "127.0.0.1",
-             "--port", "9999"],
-            capture_output=True,
-            text=True,
-        )
-
-        # Should fail gracefully with error message
-        assert result.returncode != 0 or "not running" in result.stdout.lower() or "failed" in result.stdout.lower()
-
-    def test_cli_send_with_strip_ansi(self):
-        """Verify send --no-strip-ansi keeps ANSI codes."""
-        if not check_rtt_available():
-            pytest.skip(f"RTT server not available at {RTT_HOST}:{RTT_PORT}")
-
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "send", "help",
-             "--host", RTT_HOST,
-             "--port", str(RTT_PORT),
-             "--no-strip-ansi"],
-            capture_output=True,
-            text=True,
-        )
-
-        # May or may not have ANSI depending on device output
-        # Just verify it runs without error
-        assert result.returncode == 0 or len(result.stdout) > 0
-
-    def test_send_filters_by_timestamp(self, temp_dir: Path):
-        """Verify send command filters log responses by timestamp.
-
-        This tests that send only returns log lines that were written
-        AFTER the command was sent, not old cached logs.
-        """
-        # Create log file with old entries
-        log_file = temp_dir / "rtt.log"
-        old_time = datetime.now() - timedelta(seconds=30)
-        timestamp = old_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-        # Old log entries (should NOT be returned by send)
-        old_content = f"[T:{timestamp}] [INFO] Old log entry 1\n"
-        old_content += f"[T:{timestamp}] [INFO] Old log entry 2\n"
-        old_content += f"[T:{timestamp}] [INFO] Old log entry 3\n"
-
-        log_file.write_text(old_content)
-
-        # Verify old content is in file
-        assert "Old log entry" in log_file.read_text()
-
-        # Note: Full integration test would require:
-        # 1. Starting daemon with our temp log dir
-        # 2. Sending command
-        # 3. Verifying only NEW entries are returned
-        #
-        # For now, we test the timestamp filtering logic directly
-        from rtt_daemon import parse_timestamp
-
-        # Verify old timestamps are parsed correctly
-        parsed = parse_timestamp(f"[T:{timestamp}] [INFO] test")
-        assert parsed is not None
-        assert (datetime.now() - parsed).seconds >= 29  # About 30 seconds ago
-
-
-class TestSendTimestampFiltering:
-    """Tests for send command timestamp filtering logic."""
-
-    def test_filter_logs_by_timestamp(self, temp_dir: Path):
-        """Test that logs can be filtered by timestamp.
-
-        This is the core logic used by 'send' to only return
-        responses that occurred after the command was sent.
-        """
-        from rtt_daemon import read_since, parse_timestamp
-
-        # Create log file with mixed old and new entries
-        log_file = temp_dir / "rtt.log"
-        now = datetime.now()
-        old_time = now - timedelta(seconds=60)
-
-        lines = []
-        # Old entries (60 seconds ago - should be filtered out)
-        # Format: [T:YYYY-MM-DD HH:MM:SS.mmm] - matches daemon output
-        for i in range(3):
-            ts = old_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-            lines.append(f"[T:{ts}] [INFO] Old entry {i}")
-
-        # New entries (5 seconds ago - should be included)
-        for i in range(3):
-            ts = (now - timedelta(seconds=5)).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-            lines.append(f"[T:{ts}] [INFO] New entry {i}")
-
-        log_file.write_text('\n'.join(lines) + '\n')
-
-        # Read only last 10 seconds (should only get new entries)
-        result = read_since(temp_dir, seconds=10)
-
-        # Should have new entries
-        assert len(result) >= 3
-        # Should NOT have old entries
-        assert all("Old entry" not in line for line in result)
-        assert all("New entry" in line for line in result)
-
-    def test_send_command_uses_timestamp_filtering(self, temp_dir: Path, monkeypatch):
-        """Test that send command works via daemon Unix Socket."""
-        # Create log file with old entries
-        log_file = temp_dir / "rtt.log"
-        old_time = datetime.now() - timedelta(seconds=60)
-        ts = old_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-
-        old_content = f"[T:{ts}] [INFO] Old entry - should not appear\n"
-        old_content += f"[T:{ts}] [INFO] Another old entry\n"
-        log_file.write_text(old_content)
-
-        # Mock send_command_via_daemon to simulate daemon response
-        def mock_send_via_daemon(command, socket_path=None):
-            return True, f"Response to: {command}"
-
-        import rtt
-        monkeypatch.setattr(rtt, 'send_command_via_daemon', mock_send_via_daemon)
-
-        # Create args namespace
-        import argparse
-        args = argparse.Namespace(
-            command="test",
-            host="127.0.0.1",
-            port=19021,
-            wait_for_shell=False,
-            shell_timeout=10.0,
-            log_dir=temp_dir,
-            pattern="rtt.log*",
-            no_strip_ansi=False,
-            lines=20,
-        )
-
-        # Run send command
-        result = rtt.cmd_send(args)
-
-        # Should succeed and print response
-        assert result == 0
-
-
-class TestCLIHelp:
-    """Tests for CLI help messages."""
-
-    def test_cli_main_help(self):
-        """Verify main help shows all subcommands."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "--help"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        assert "daemon" in result.stdout
-        assert "read" in result.stdout
-        assert "send" in result.stdout
-        # Note: shell command was removed - daemon is the sole RTT reader
-
-    def test_cli_daemon_help(self):
-        """Verify daemon help shows actions."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "daemon", "--help"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        assert "start" in result.stdout
-        assert "stop" in result.stdout
-        assert "status" in result.stdout
-
-    def test_cli_read_help(self):
-        """Verify read help shows options."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "read", "--help"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        assert "--lines" in result.stdout
-        assert "--since" in result.stdout
-        assert "--grep" in result.stdout
-
-    def test_cli_send_help(self):
-        """Verify send help shows options."""
-        result = subprocess.run(
-            [sys.executable, str(RTT_SCRIPT), "send", "--help"],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0
-        # --timeout was removed - send now uses timestamp filtering
-        assert "--wait-for-shell" in result.stdout
-        assert "--log-dir" in result.stdout
-        assert "--lines" in result.stdout
-
-
-class TestStripAnsiFunction:
-    """Tests for strip_ansi function exported in rtt.py."""
-
-    def test_strip_ansi_from_rtt(self):
-        """Test strip_ansi works with typical RTT output."""
-        from rtt_daemon import strip_ansi
-
-        # Typical RTT output with ANSI colors
-        text = "\x1b[32m[INFO]\x1b[0m System started\n"
-        result = strip_ansi(text)
-        assert result == "[INFO] System started\n"
-
-    def test_strip_ansi_preserves_content(self):
-        """Test strip_ansi preserves non-ANSI content."""
-        from rtt_daemon import strip_ansi
-
-        text = "Plain text without colors"
-        result = strip_ansi(text)
-        assert result == text
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "skills" / "rtt-tools" / "scripts"))
+
+from rtt import (
+    build_jlink_gdb_server_cmd,
+    capture_reconnecting,
+    capture_rtt,
+    drain_rtt,
+    find_gdb,
+    reset_and_go_via_gdb,
+    send_command_and_read,
+    strip_ansi,
+    wait_for_rtt_socket,
+)
+
+
+def test_build_jlink_gdb_server_cmd_matches_jlink_rtt_shape():
+    cmd = build_jlink_gdb_server_cmd(
+        device="NRF54L15_M33",
+        interface="SWD",
+        speed="4000",
+        gdb_port=2331,
+        rtt_port=19021,
+    )
+
+    assert cmd[:3] == ["JLinkGDBServer", "-select", "usb"]
+    assert ["-device", "NRF54L15_M33"] == cmd[cmd.index("-device"):cmd.index("-device") + 2]
+    assert ["-rtttelnetport", "19021"] == cmd[cmd.index("-rtttelnetport"):cmd.index("-rtttelnetport") + 2]
+    assert "-nohalt" in cmd
+    assert "-singlerun" in cmd
+    assert "-nogui" in cmd
+
+
+def test_build_jlink_gdb_server_cmd_uses_dev_id():
+    cmd = build_jlink_gdb_server_cmd(device="NRF54L15_M33", dev_id="608888244")
+
+    assert cmd[cmd.index("-select") + 1] == "usb=608888244"
+
+
+def test_strip_ansi_removes_rtt_prompt_codes():
+    text = "\x1b[1;32mrtt:~$ \x1b[mkernel uptime\r\n"
+
+    assert strip_ansi(text) == "rtt:~$ kernel uptime\r\n"
+
+
+def test_wait_for_rtt_socket_connects_to_listening_port():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(1)
+    port = server.getsockname()[1]
+
+    accepted = []
+
+    def accept_once():
+        conn, _ = server.accept()
+        accepted.append(conn)
+
+    thread = threading.Thread(target=accept_once)
+    thread.start()
+
+    client = wait_for_rtt_socket("127.0.0.1", port, timeout=1.0)
+    client.close()
+    thread.join(timeout=1.0)
+    server.close()
+    for conn in accepted:
+        conn.close()
+
+    assert accepted
+
+
+def test_send_command_and_read_writes_command_and_reads_response():
+    left, right = socket.socketpair()
+
+    def target():
+        data = right.recv(4096)
+        assert data == b"kernel uptime\n"
+        right.sendall(b"\x1b[1;32mrtt:~$ \x1b[mkernel uptime\r\nUptime: 42 ms\r\n")
+        right.close()
+
+    thread = threading.Thread(target=target)
+    thread.start()
+    response = send_command_and_read(left, "kernel uptime", timeout=1.0)
+    left.close()
+    thread.join(timeout=1.0)
+
+    assert "kernel uptime" in response
+    assert "Uptime: 42 ms" in response
+    assert "\x1b[" not in response
+
+
+def test_capture_rtt_reads_available_output():
+    left, right = socket.socketpair()
+    right.sendall(b"\x1b[1;32mrtt:~$ \x1b[mboot line\r\n")
+    right.close()
+
+    output = StringIO()
+    capture_rtt(left, seconds=1.0, output_stream=output)
+    left.close()
+
+    assert output.getvalue() == "rtt:~$ boot line\r\n"
+
+
+def test_drain_rtt_discards_stale_output():
+    left, right = socket.socketpair()
+    right.sendall(b"old boot log\r\n")
+
+    drain_rtt(left, quiet=0.01, timeout=0.2)
+    right.sendall(b"new boot log\r\n")
+
+    output = StringIO()
+    capture_rtt(left, seconds=0.2, output_stream=output)
+    left.close()
+    right.close()
+
+    assert output.getvalue() == "new boot log\r\n"
+
+
+def test_capture_reconnecting_reads_after_socket_drop():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("127.0.0.1", 0))
+    server.listen(2)
+    port = server.getsockname()[1]
+
+    def serve():
+        first, _ = server.accept()
+        first.sendall(b"SEGGER banner\r\n")
+        first.close()
+        second, _ = server.accept()
+        second.sendall(b"boot line\r\n")
+        second.close()
+        server.close()
+
+    thread = threading.Thread(target=serve)
+    thread.start()
+
+    output = StringIO()
+    capture_reconnecting(
+        host="127.0.0.1",
+        port=port,
+        seconds=1.0,
+        connect_timeout=1.0,
+        output_stream=output,
+    )
+    thread.join(timeout=1.0)
+
+    assert "SEGGER banner" in output.getvalue()
+    assert "boot line" in output.getvalue()
+
+
+def test_find_gdb_prefers_explicit_path():
+    assert find_gdb("/tmp/custom-gdb") == "/tmp/custom-gdb"
+
+
+def test_reset_and_go_via_gdb_builds_monitor_command(monkeypatch):
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+
+        class Result:
+            returncode = 0
+
+        return Result()
+
+    monkeypatch.setattr("rtt.subprocess.run", fake_run)
+
+    reset_and_go_via_gdb(
+        host="127.0.0.1",
+        port=2331,
+        gdb="/tmp/gdb",
+        elf_file="/tmp/app.elf",
+    )
+
+    cmd, kwargs = calls[0]
+    assert cmd[:4] == ["/tmp/gdb", "-q", "-nx", "-batch"]
+    assert "/tmp/app.elf" in cmd
+    assert "target extended-remote 127.0.0.1:2331" in cmd
+    assert "monitor reset" in cmd
+    assert "monitor go" in cmd
+    assert kwargs["check"] is True
