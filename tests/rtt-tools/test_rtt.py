@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import socket
+import subprocess
 import sys
 import threading
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -18,6 +20,7 @@ from rtt import (
     find_gdb,
     reset_and_go_via_gdb,
     send_command_and_read,
+    start_server,
     strip_ansi,
     wait_for_rtt_socket,
 )
@@ -122,6 +125,37 @@ def test_drain_rtt_discards_stale_output():
     right.close()
 
     assert output.getvalue() == "new boot log\r\n"
+
+
+def test_start_server_suppresses_jlink_output_by_default(monkeypatch):
+    calls = []
+
+    class FakePopen:
+        def __init__(self, cmd, **kwargs):
+            calls.append((cmd, kwargs))
+
+    monkeypatch.setattr("rtt.subprocess.Popen", FakePopen)
+
+    start_server(
+        SimpleNamespace(
+            device="NRF54L15_M33",
+            dev_id=None,
+            interface="SWD",
+            speed="4000",
+            gdb_port=2331,
+            rtt_port=19021,
+            endian="little",
+            gdbserver="JLinkGDBServer",
+            halt=False,
+            no_single_run=False,
+            tool_opt=[],
+            verbose=False,
+        )
+    )
+
+    _, kwargs = calls[0]
+    assert kwargs["stdout"] == subprocess.DEVNULL
+    assert kwargs["stderr"] == subprocess.DEVNULL
 
 
 def test_capture_reconnecting_reads_after_socket_drop():

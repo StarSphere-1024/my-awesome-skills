@@ -320,10 +320,13 @@ def start_server(args: argparse.Namespace) -> subprocess.Popen:
         single_run=not getattr(args, "no_single_run", False),
         tool_opt=args.tool_opt,
     )
-    print("Starting:", " ".join(cmd), file=sys.stderr)
+    if args.verbose:
+        print("Starting:", " ".join(cmd), file=sys.stderr)
     return subprocess.Popen(
         cmd,
         preexec_fn=os.setsid if hasattr(os, "setsid") else None,
+        stdout=None if args.verbose else subprocess.DEVNULL,
+        stderr=None if args.verbose else subprocess.DEVNULL,
     )
 
 
@@ -420,6 +423,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--connect-timeout", type=float, default=10.0)
     parser.add_argument("--attach", action="store_true", help="connect to an existing RTT server")
     parser.add_argument("--halt", action="store_true", help="omit JLinkGDBServer -nohalt")
+    parser.add_argument("--verbose", action="store_true", help="show JLinkGDBServer startup output")
     parser.add_argument(
         "-O",
         "--tool-opt",

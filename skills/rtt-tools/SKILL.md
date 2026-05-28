@@ -23,7 +23,7 @@ Firmware must:
 
 ```bash
 RTT=/path/to/skills/rtt-tools/scripts/rtt.py
-````
+```
 
 Defaults:
 
@@ -43,6 +43,9 @@ Run one command:
 ```bash
 python "$RTT" command -d <device> "help"
 ```
+
+The tool suppresses J-Link startup noise by default. Use `--verbose` only when
+diagnosing the J-Link server itself.
 
 Open console:
 
@@ -70,6 +73,7 @@ Useful options:
 --gdb <path>           explicit GDB path
 --no-drain             keep old RTT buffered data
 --no-strip-ansi        keep ANSI escapes in command output
+--verbose              show JLinkGDBServer startup output
 ```
 
 ## Procedure
