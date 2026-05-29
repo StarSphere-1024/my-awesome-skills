@@ -1,6 +1,6 @@
 ---
 name: rtt-tools
-description: Use when debugging embedded firmware through SEGGER J-Link RTT: capture RTT output, send RTT console commands, or open an interactive RTT console.
+description: Use when debugging embedded firmware through SEGGER J-Link RTT - capture RTT output, send RTT console commands, or open an interactive RTT console.
 ---
 
 # RTT Tools
