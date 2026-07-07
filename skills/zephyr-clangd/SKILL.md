@@ -1,109 +1,79 @@
 ---
 name: zephyr-clangd
-description: Configure clangd language server for Zephyr RTOS projects with cross-compilation toolchains. Use when setting up clangd for Zephyr, nRF Connect SDK, or ARM cross-compilation projects, or when clangd shows errors like "Unknown Arm architecture profile" or "failed to resolve include".
+description: Fix clangd/LSP for Zephyr and nRF Connect SDK projects using compile_commands.json and query-driver. Use for broken includes, bogus Zephyr macro errors, wrong ARM targets, stale NCS toolchain paths, or bad go-to-definition.
 ---
 
 # Zephyr clangd Configuration
 
-## Quick Start
+Use this skill to make clangd parse Zephyr/NCS firmware with the same compile flags as the real build. The compile database is the source of truth; avoid reconstructing target triples, sysroots, generated include paths, and board macros by hand.
 
-1. Generate `compile_commands.json` with `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`
-2. Create symlink: `ln -sf build/<app>/compile_commands.json .`
-3. Detect toolchain paths and target triple from user environment
-4. Create `.clangd` config using detected values
-5. Create `.vscode/settings.json` with `--query-driver`
-6. Restart clangd in editor
+## Core rule
 
-## Workflow
+Prefer this model:
 
-### Step 1: Detect Environment
-
-Before configuring, gather these from the user's environment:
-
-```bash
-# 1. Board (from env or west build command)
-echo $BOARD
-
-# 2. Cross-compiler path
-which arm-*-gcc  # or from ZEPHYR_SDK_INSTALL_DIR
-
-# 3. Target triple (from compiler)
-arm-zephyr-eabi-gcc -dumpmachine
-
-# 4. GCC version (from compiler path)
-arm-zephyr-eabi-gcc -dumpversion
-
-# 5. Built-in include paths
-arm-zephyr-eabi-gcc -E -x c -v /dev/null 2>&1 | awk '/search starts here/,/End of search/' | grep "^\s/"
-
-# 6. SDK install dir
-echo $ZEPHYR_SDK_INSTALL_DIR
+```text
+Zephyr build -> build/<app>/compile_commands.json -> clangd CompilationDatabase + query-driver
 ```
 
-**Target triple mapping** (use `arm-*-gcc -dumpmachine` to get exact value):
-| Architecture | Target Triple |
-|---|---|
-| Cortex-M0/M0+ | `thumbv6m-none-eabi` |
-| Cortex-M3 | `thumbv7m-none-eabi` |
-| Cortex-M4/M7 (no FPU) | `thumbv7em-none-eabi` |
-| Cortex-M4/M7 (with FPU) | `thumbv7em-none-eabihf` |
-| Cortex-M33 | `thumbv8m.main-none-eabi` |
-| Cortex-M33 (with FPU) | `thumbv8m.main-none-eabihf` |
-| Cortex-M55 | `thumbv8.1m.main-none-eabihf` |
+Avoid this model unless there is no working compile database:
 
-### Step 2: Generate compile_commands.json
-
-Add `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` to the build command:
-
-```bash
-# In envsetup.sh, add to wbuild function:
--DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```text
+hand-written --target + hand-written -isystem GCC paths + stripped ARM flags
 ```
 
-Or run manually:
+Hand-written target/include flags go stale when NCS changes toolchain hashes, GCC versions, boards, overlays, generated headers, or build directories. They can also hide the real failure: clangd did not load the compile database or could not execute the cross compiler through `--query-driver`.
+
+## Quick start
+
+1. Build with `CMAKE_EXPORT_COMPILE_COMMANDS=ON` so `build/<app>/compile_commands.json` exists.
+2. Locate the real build subdirectory containing the compile database.
+3. Configure `.clangd` with `CompileFlags.CompilationDatabase: build/<app>`.
+4. Configure the editor with both `--compile-commands-dir` and `--query-driver`.
+5. Verify with `clangd --check` on a small source file before trusting editor diagnostics.
+6. Restart clangd in the editor.
+
+A root-level `compile_commands.json` symlink can be useful for legacy tools, but do not rely on it as the only clangd configuration. Point clangd at the real build directory explicitly.
+
+## Step 1: Locate the compile database
+
+Find candidate compile databases:
+
 ```bash
-source envsetup.sh
-west build --build-dir build . --pristine --board $BOARD -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [other flags]
+find build -name compile_commands.json -type f
 ```
 
-### Step 3: Create Symlink
+Prefer the one whose entries point at the current repo's source files. In common sysbuild/NCS app builds, the useful path is often:
 
-```bash
-ln -sf build/<app-name>/compile_commands.json .
+```text
+build/<app-name>/compile_commands.json
 ```
 
-The `<app-name>` is the CMake project name (check `build/` directory for the subfolder name).
+Examples:
 
-### Step 4: Create .clangd
+```text
+build/fw260528/compile_commands.json
+build/blebasefw/compile_commands.json
+```
 
-Create `.clangd` in project root. Use detected values:
+If there are multiple compile databases, inspect the first entry and choose the one where:
+
+- `directory` is the application build directory, not only a bootloader/radio child image.
+- `file` points to the app source tree, such as `src/main.c`.
+- `command` uses the Zephyr SDK cross compiler, such as `arm-zephyr-eabi-gcc`.
+
+## Step 2: Configure `.clangd`
+
+Create or update `.clangd` in the project root. Replace `<app-name>` with the build subdirectory found in Step 1.
 
 ```yaml
 CompileFlags:
+  CompilationDatabase: build/<app-name>
   Add:
     - "-Wno-unknown-warning-option"
-    - "--target=<DETECTED_TARGET_TRIPLE>"  # from arm-*-gcc -dumpmachine
-    # Include paths from: arm-*-gcc -E -x c -v /dev/null
-    - "-isystem"
-    - "<GCC_INCLUDE_PATH>/include"           # e.g. .../lib/gcc/arm-zephyr-eabi/<VER>/include
-    - "-isystem"
-    - "<GCC_INCLUDE_FIXED_PATH>/include-fixed" # e.g. .../lib/gcc/arm-zephyr-eabi/<VER>/include-fixed
-    - "-isystem"
-    - "<SYSROOT>/sys-include"                # e.g. .../arm-zephyr-eabi/arm-zephyr-eabi/sys-include
-    - "-isystem"
-    - "<SYSROOT>/include"                    # e.g. .../arm-zephyr-eabi/arm-zephyr-eabi/include
   Remove:
-    - "-mcpu=*"
-    - "-mthumb"
-    - "-mabi=*"
-    - "-mfpu=*"
-    - "-mfloat-abi=*"
     - "-mfp16-format=*"
-    - "-march=*"
-    - "-mtp=*"
     - "--specs=*"
     - "--param=*"
-    - "--sysroot=*"
     - "-fno-defer-pop"
     - "-fno-reorder-functions"
     - "-fno-reorder-blocks"
@@ -129,89 +99,215 @@ Diagnostics:
     - "pp_building_preamble"
 ```
 
-### Step 5: Configure VS Code
+### Do not remove target-defining flags
 
-Create `.vscode/settings.json` with `--query-driver` pointing to the cross-compiler:
+Do not put these in `CompileFlags.Remove` for Zephyr/NCS ARM firmware:
+
+```yaml
+- "-mcpu=*"
+- "-mthumb"
+- "-mabi=*"
+- "-mfpu=*"
+- "-mfloat-abi=*"
+- "-march=*"
+- "-mtp=*"
+- "--sysroot=*"
+```
+
+Those flags carry the actual target architecture and system root from the Zephyr build. Removing them can make clangd fall back to the wrong CPU, such as `arm7tdmi`/`armv4t`, and then report misleading errors like `Unknown Arm architecture profile`.
+
+### Do not hand-write GCC include paths by default
+
+Do not add Zephyr SDK GCC built-in include paths like this unless query-driver cannot be made to work:
+
+```yaml
+- "-isystem"
+- "/home/.../arm-zephyr-eabi/lib/gcc/.../include"
+```
+
+Instead, configure `--query-driver` so clangd runs the real compiler and extracts system include paths automatically.
+
+### Do not hand-write `--target` by default
+
+Do not add this by default:
+
+```yaml
+- "--target=thumbv8m.main-none-eabi"
+```
+
+The compile database plus compiler name normally provides a better target. A hand-written clang-style `--target` can also interfere with GCC system include extraction.
+
+## Step 3: Configure the editor
+
+For VS Code, create or update `.vscode/settings.json`:
 
 ```json
 {
     "clangd.arguments": [
-        "--query-driver=<CROSS_COMPILER_DIR>/*",
+        "--compile-commands-dir=${workspaceFolder}/build/<app-name>",
+        "--query-driver=<ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/*",
         "--header-insertion=never",
         "--background-index"
     ]
 }
 ```
 
-The `--query-driver` value should be a glob matching the cross-compiler binary:
-- Find compiler dir: `dirname $(which arm-*-gcc)`
-- Set to: `<compiler_dir>/*`
+Adjust the query-driver path for the user's NCS/Zephyr SDK location. Prefer a glob over a fixed NCS toolchain hash:
 
-### Step 6: Restart clangd
-
-- VS Code: `Ctrl+Shift+P` → "clangd: Restart language server"
-- Neovim: `:LspRestart`
-
-## Common Issues
-
-### "Unknown Arm architecture profile"
-
-**Cause**: clangd doesn't know the target architecture.
-
-**Fix**: Add `--target=<triple>` to `.clangd` CompileFlags.Add. Get triple from `arm-*-gcc -dumpmachine`.
-
-### "Unknown argument: '-mfp16-format=ieee'" (or other -m flags)
-
-**Cause**: ARM-specific compiler flags not recognized by clangd.
-
-**Fix**: Add the flag pattern to `.clangd` CompileFlags.Remove (already in template above).
-
-### "Failed to get an entry for resolved path '' from include <stdio.h>"
-
-**Cause**: clangd can't find system headers for the cross-compiler.
-
-**Fix**:
-1. Add `--query-driver=<compiler-dir>/*` to `.vscode/settings.json`
-2. Add GCC built-in include paths as `-isystem` in `.clangd`
-
-### "Main file cannot be included recursively when building a preamble"
-
-**Cause**: A header file includes itself (circular include).
-
-**Fix**: Search for self-includes:
-```bash
-# Find the offending file from clangd error, then check:
-grep -rn '#include "filename.h"' path/to/filename.h
+```text
+Good: <ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/*
+Risky: <ncs-root>/toolchains/2ac5840438/opt/zephyr-sdk/arm-zephyr-eabi/bin/*
 ```
 
-### Errors about undeclared functions (strcat, strlen, etc.)
+NCS updates can change the hash directory while `compile_commands.json` still points at the current toolchain. A hash-specific query-driver can silently become stale.
 
-**Cause**: System headers not found, so library functions aren't declared.
+For Neovim, Zed, or other editors, pass the same clangd arguments through that editor's LSP configuration:
 
-**Fix**: Ensure `--query-driver` is set correctly and include paths are in `.clangd`.
+```text
+--compile-commands-dir=<repo>/build/<app-name>
+--query-driver=<ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/*
+--header-insertion=never
+--background-index
+```
 
-## Reference Commands
+## Step 4: Verify from the terminal
+
+Use a small source file first. Large `src/main.c` files can spend a long time in clangd's `Testing features at each token` phase.
 
 ```bash
-# Find cross-compiler
-find $ZEPHYR_SDK_INSTALL_DIR -name "arm-*-gcc" -type f 2>/dev/null
-
-# Get target triple
-arm-zephyr-eabi-gcc -dumpmachine
-
-# Get GCC version (used in include path)
-arm-zephyr-eabi-gcc -dumpversion
-
-# Get built-in include paths
-arm-zephyr-eabi-gcc -E -x c -v /dev/null 2>&1 | awk '/search starts here/,/End of search/' | grep "^\s/"
-
-# Get sysroot
-arm-zephyr-eabi-gcc -print-sysroot
-
-# Find all compile_commands.json in build
-find build -name "compile_commands.json" -type f
-
-# Detect board from west build args or environment
-echo $BOARD
-grep -r "BOARD" envsetup.sh CMakeLists.txt
+clangd --check=src/app_ab.c \
+  --compile-commands-dir=build/<app-name> \
+  --query-driver=<ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/*
 ```
+
+A healthy setup shows these facts:
+
+```text
+Loaded compilation database from .../build/<app-name>/compile_commands.json
+System includes extractor: successfully executed .../arm-zephyr-eabi-gcc
+got target: "arm-zephyr-eabi"
+-triple thumbv8m.main-zephyr-unknown-eabi
+-target-cpu cortex-m33
+```
+
+The exact triple may differ by board and float ABI. The important facts are:
+
+- clangd loaded the app compile database.
+- clangd executed the cross compiler through query-driver.
+- clangd did not fall back to `/usr/bin/clang`.
+- clangd sees the intended ARM/Thumb CPU, not a generic host or wrong legacy ARM CPU.
+
+Then check editor/LSP diagnostics for representative files.
+
+## Troubleshooting
+
+### clangd falls back to `/usr/bin/clang`
+
+Symptoms:
+
+```text
+Failed to find compilation database
+Generic fallback command is: ... /usr/bin/clang ...
+```
+
+Fix:
+
+1. Confirm `build/<app-name>/compile_commands.json` exists.
+2. Set `.clangd` `CompileFlags.CompilationDatabase: build/<app-name>`.
+3. Add editor arg `--compile-commands-dir=${workspaceFolder}/build/<app-name>`.
+4. Do not rely only on a root `compile_commands.json` symlink.
+
+### `Unknown Arm architecture profile`
+
+Usually this means clangd lost the real target flags, not that you should add a hand-written `--target`.
+
+Check:
+
+1. Is clangd loading the app compile database?
+2. Did `.clangd` remove `-mcpu=*`, `-mthumb`, `-mabi=*`, `-mfpu=*`, `-mfloat-abi=*`, `--sysroot=*`, or similar target/sysroot flags?
+3. Does `clangd --check` show a wrong internal target such as `armv4t` or `arm7tdmi`?
+
+Fix:
+
+- Restore target-defining flags by removing those patterns from `CompileFlags.Remove`.
+- Use `CompilationDatabase` and `query-driver` rather than hand-written `--target`/`-isystem` flags.
+
+### `unknown argument: '-mfp16-format=ieee'`
+
+Fix:
+
+```yaml
+CompileFlags:
+  Remove:
+    - "-mfp16-format=*"
+```
+
+This one is commonly safe to remove because clangd/clang may not accept GCC's `-mfp16-format=ieee`, while the remaining architecture flags still describe the target.
+
+### System headers or Zephyr headers cannot be resolved
+
+Symptoms:
+
+```text
+failed to resolve include
+Failed to get an entry for resolved path '' from include <...>
+strcat/strlen undeclared
+Zephyr macros like LOG_MODULE_REGISTER or K_SEM_DEFINE look broken
+```
+
+Fix in this order:
+
+1. Ensure clangd loaded `build/<app-name>/compile_commands.json`.
+2. Ensure `--query-driver` matches the actual cross compiler path from the compile command.
+3. Prefer a toolchain glob over a fixed NCS hash.
+4. Only as a last resort, add GCC built-in `-isystem` paths manually.
+
+### clangd self-test reports `tweak: SwapBinaryOperands` overlap
+
+Example:
+
+```text
+tweak: SwapBinaryOperands ==> FAIL: The new replacement overlaps with an existing replacement.
+```
+
+This can happen in `clangd --check` around Zephyr macros such as `K_MSEC()` or `K_SEM_DEFINE()`. Do not treat it as a configuration failure by itself. Prefer LSP diagnostics and the earlier `Loaded compilation database` / `System includes extractor` / target facts for setup validation.
+
+### LSP line numbers or go-to-definition are obviously wrong
+
+Symptoms:
+
+- file symbols report line numbers that do not match the on-disk file;
+- go-to-definition jumps to unrelated Zephyr macros;
+- diagnostics disappear but navigation remains stale.
+
+Fix:
+
+1. Save all buffers in the editor.
+2. Restart clangd.
+3. Clear/rebuild clangd background index if the editor exposes that action.
+4. Re-run `clangd --check` with the explicit build directory.
+
+## Reference commands
+
+Use these to inspect the environment. Treat them as diagnostics, not as values to hard-code into `.clangd` unless needed for a fallback.
+
+```bash
+# Find compile databases
+find build -name compile_commands.json -type f
+
+# Inspect the compiler used by the build
+head -n 20 build/<app-name>/compile_commands.json
+
+# Check compiler target reported by GCC
+<ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc -dumpmachine
+
+# Check GCC system include extraction manually
+<ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc -E -x c -v /dev/null
+
+# Verify clangd setup
+clangd --check=src/app_ab.c \
+  --compile-commands-dir=build/<app-name> \
+  --query-driver=<ncs-root>/toolchains/*/opt/zephyr-sdk/arm-zephyr-eabi/bin/*
+```
+
+If working in a coding harness with specialized file/search tools, use those tools for file discovery and reading instead of shelling out for `find`, `grep`, or `head`. The shell examples above are for users configuring editors directly.
