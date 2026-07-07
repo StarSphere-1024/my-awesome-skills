@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codebase-First Engineering"
+  short_description: "Make changes with system-aware engineering judgment."
+  default_prompt: "Apply codebase-first engineering judgment to this change: inspect the existing system shape, identify risky assumptions, keep the edit small, and define verification before modifying code."
