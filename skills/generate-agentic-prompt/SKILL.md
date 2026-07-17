@@ -1,13 +1,13 @@
 ---
 name: generate-agentic-prompt
-description: Use when starting any coding task with unclear requirements, vague feature requests, or ambiguous bug fixes - before writing implementation code. Triggers automatic domain inference (Embedded, Python, DevOps, Zephyr, etc.) and compiles rigorous Markdown prompts with reconnaissance, HITL clarification, TDD workflow, and selectively applied domain constraints.
+description: Use only when the user explicitly asks for a reusable implementation prompt. Interview first, then compile the prompt. For ambiguous requirements without that request, use clarify-requirements.
 ---
 
 # Generate Agentic Prompt
 
 ## Overview
 
-This skill is an interactive prompt compiler. It turns vague development requests into rigorous, action-oriented Markdown prompts through a two-phase workflow.
+This skill is an interactive prompt compiler. Use it only when the requested deliverable is a reusable implementation prompt, not merely a clearer requirement.
 
 **Phase 1: Interview**
 - Infer the domain from semantic signals, not hard-coded keyword matching.
@@ -20,7 +20,7 @@ This skill is an interactive prompt compiler. It turns vague development request
 - Compile the final implementation prompt in Markdown.
 - Stop immediately after outputting the prompt. Do not execute the prompt.
 
-Never compile the final prompt until the user has explicitly answered the clarification questions.
+If the user has not explicitly requested an implementation prompt, do not enter this workflow. Use `clarify-requirements` to clarify the requirement first. Never compile the final prompt until the user has explicitly answered the clarification questions.
 
 ## Domain Inference
 
@@ -55,7 +55,7 @@ Suggested reconnaissance commands:
 | `cat .gitignore` | Understand what files are tracked |
 | `grep -r "import\|require" src/ \| head -10` | Find import conventions |
 
-The compiled prompt must require reconnaissance findings before clarification or implementation.
+The compiled prompt must require reconnaissance findings before implementation.
 
 ### Minimal Blast Radius
 
@@ -201,7 +201,7 @@ Prefer 3-7 bullets. Do not copy the full reference.
 
 ### State 1: Interview
 
-When the user gives a requirement:
+When the user explicitly requests an implementation prompt:
 1. Infer the domain internally.
 2. Generate multiple-choice clarification questions.
 3. Stop immediately. Do not output the final prompt. Wait for the user to answer.
@@ -309,12 +309,13 @@ Document the project structure, dependency manager, route conventions, and exist
 
 ## Trigger Patterns
 
-Use this skill when:
-- Requirement is vague: "add X", "fix Y", "optimize Z"
-- Starting a feature from scratch with unclear constraints
-- Unclear which domain-specific engineering rules apply
-- Need a structured, TDD-compliant development prompt before coding
-- Need Human-in-the-Loop confirmation before architectural decisions
+Use this skill only when the user explicitly requests a reusable implementation prompt, for example:
+- “Generate an implementation prompt for another agent.”
+- “Turn this requirement into a prompt for Codex or Claude.”
+- “Compile a rigorous task prompt before coding.”
+- An explicit `/requirement` command whose documented output is an implementation prompt.
+
+Do not use this skill merely because requirements are vague, constraints are unclear, or architectural decisions need confirmation. In those cases, use `clarify-requirements` until the user requests an implementation prompt or direct implementation.
 
 ## File Organization
 
