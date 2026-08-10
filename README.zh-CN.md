@@ -13,6 +13,7 @@
 | [linux-gdb-debugger](skills/linux-gdb-debugger/) | `/linux-gdb-debugger` | Linux 用户态 C/C++ 调试，覆盖崩溃、core dump、挂起和单步执行 |
 | [git_commit](skills/git_commit/) | `/git_commit` | Conventional Commit 辅助工具，检查暂存区变更并生成规范提交信息 |
 | [generate-agentic-prompt](skills/generate-agentic-prompt/) | `/generate-agentic-prompt` | 交互式提示词编译器，自动推断开发领域并生成结构化的实现提示词 |
+| [mermaid-layout](skills/mermaid-layout/) | `/mermaid-layout` | Mermaid 图布局与拓扑优化，减少边交叉并保持业务语义不变 |
 
 ## 安装
 

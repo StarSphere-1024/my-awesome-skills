@@ -13,6 +13,7 @@ A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sk
 | [linux-gdb-debugger](skills/linux-gdb-debugger/) | `/linux-gdb-debugger` | Linux user-space C/C++ debugging for crashes, core dumps, hangs, and stepping |
 | [git_commit](skills/git_commit/) | `/git_commit` | Conventional Commit helper that inspects staged changes and commits with a formatted message |
 | [generate-agentic-prompt](skills/generate-agentic-prompt/) | `/generate-agentic-prompt` | Interactive prompt compiler that infers your domain and produces structured implementation prompts |
+| [mermaid-layout](skills/mermaid-layout/) | `/mermaid-layout` | Mermaid diagram layout and topology optimization that reduces edge crossings while preserving business meaning |
 
 ## Installation
 
