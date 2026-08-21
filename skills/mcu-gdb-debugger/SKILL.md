@@ -1,6 +1,9 @@
 ---
 name: mcu-gdb-debugger
 description: Use for MCU firmware debugging with GDB/gdbserver, probe or QEMU targets, flash/attach flows, and Cortex-M fault analysis.
+metadata:
+  category: debugging
+  tags: mcu, gdb, gdbserver, qemu
 ---
 
 # MCU GDB Debugger

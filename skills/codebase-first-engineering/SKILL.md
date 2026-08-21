@@ -1,6 +1,9 @@
 ---
 name: codebase-first-engineering
 description: Apply system-aware engineering judgment before modifying an existing codebase. Use when making code changes in a repo, especially when requirements are ambiguous, architecture-sensitive, hardware-facing, concurrent, protocol-related, or likely to affect shared behavior.
+metadata:
+  category: engineering
+  tags: codebase, architecture, verification
 ---
 
 # Codebase First Engineering

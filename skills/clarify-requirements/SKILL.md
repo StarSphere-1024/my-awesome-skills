@@ -1,6 +1,9 @@
 ---
 name: clarify-requirements
 description: Use when the user wants to clarify or scope an ambiguous coding requirement without generating a prompt or starting implementation. Ask focused decision-blocking questions, then summarize the agreed requirement.
+metadata:
+  category: engineering
+  tags: requirements, clarification, scope
 ---
 
 # Clarify Requirements

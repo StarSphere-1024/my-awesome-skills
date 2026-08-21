@@ -1,6 +1,9 @@
 ---
 name: generate-agentic-prompt
 description: Use only when the user explicitly asks for a reusable implementation prompt. Interview first, then compile the prompt. For ambiguous requirements without that request, use clarify-requirements.
+metadata:
+  category: engineering
+  tags: prompt, domain-inference, workflow
 ---
 
 # Generate Agentic Prompt

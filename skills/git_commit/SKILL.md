@@ -1,6 +1,9 @@
 ---
 name: git_commit
 description: Use when committing staged changes with a Conventional Commit.
+metadata:
+  category: engineering
+  tags: git, conventional-commits, staging
 ---
 
 # Git Commit

@@ -1,6 +1,9 @@
 ---
 name: rtt-tools
 description: Use when debugging embedded firmware through SEGGER J-Link RTT - capture RTT output, send RTT console commands, or open an interactive RTT console.
+metadata:
+  category: embedded
+  tags: zephyr, j-link, rtt, console
 ---
 
 # RTT Tools

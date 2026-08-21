@@ -1,6 +1,9 @@
 ---
 name: mermaid-layout
 description: Optimize Mermaid diagram topology for readable, stable rendering with fewer crossings while preserving every business node, edge, label, and semantic. Use this skill whenever creating, generating, rewriting, or substantially modifying Mermaid flowchart, graph, stateDiagram, sequenceDiagram, architecture, dependency, control-flow, or module-interaction diagrams—even when layout optimization is not explicitly requested.
+metadata:
+  category: visualization
+  tags: mermaid, diagrams, graph-layout
 ---
 
 # Mermaid Layout Skill

@@ -1,6 +1,9 @@
 ---
 name: zephyr-clangd
 description: Fix clangd/LSP for Zephyr and nRF Connect SDK projects using compile_commands.json and query-driver. Use for broken includes, bogus Zephyr macro errors, wrong ARM targets, stale NCS toolchain paths, or bad go-to-definition.
+metadata:
+  category: embedded
+  tags: zephyr, ncs, clangd, lsp
 ---
 
 # Zephyr clangd Configuration

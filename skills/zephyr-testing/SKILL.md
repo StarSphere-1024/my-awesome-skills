@@ -1,6 +1,9 @@
 ---
 name: zephyr-testing
 description: Use when adding, reviewing, running, or debugging tests for Zephyr RTOS projects, including Ztest, Twister, testcase.yaml, native_sim, QEMU, pytest harness, shell harness, hardware-in-the-loop testing, regression tests, and coverage reports.
+metadata:
+  category: embedded
+  tags: zephyr, ztest, twister, pytest, qemu
 ---
 
 # Zephyr Testing Skill

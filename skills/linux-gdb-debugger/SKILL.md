@@ -1,6 +1,9 @@
 ---
 name: linux-gdb-debugger
 description: Use for Linux C/C++ GDB crash, core dump, and hang debugging.
+metadata:
+  category: debugging
+  tags: linux, c, cpp, gdb, core-dump
 ---
 
 # Linux GDB Debugger
