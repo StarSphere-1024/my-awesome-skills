@@ -2,18 +2,45 @@
 
 English | [中文](README.zh-CN.md)
 
-A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for embedded systems development, firmware debugging, and general software engineering workflows.
+A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for embedded development, software engineering, debugging, and personal self-hosting infrastructure.
 
-## Skills
+## Engineering Workflows
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| [rtt-tools](skills/rtt-tools/) | `/rtt-tools` | SEGGER J-Link RTT capture, command, and interactive console for Zephyr RTOS targets |
-| [mcu-gdb-debugger](skills/mcu-gdb-debugger/) | `/mcu-gdb-debugger` | MCU firmware debugging with GDB and gdbserver backends (OpenOCD, pyOCD, J-Link, QEMU) |
-| [linux-gdb-debugger](skills/linux-gdb-debugger/) | `/linux-gdb-debugger` | Linux user-space C/C++ debugging for crashes, core dumps, hangs, and stepping |
-| [git_commit](skills/git_commit/) | `/git_commit` | Conventional Commit helper that inspects staged changes and commits with a formatted message |
-| [generate-agentic-prompt](skills/generate-agentic-prompt/) | `/generate-agentic-prompt` | Interactive prompt compiler that infers your domain and produces structured implementation prompts |
-| [mermaid-layout](skills/mermaid-layout/) | `/mermaid-layout` | Mermaid diagram layout and topology optimization that reduces edge crossings while preserving business meaning |
+| [codebase-first-engineering](skills/codebase-first-engineering/) | `/codebase-first-engineering` | System-aware reconnaissance and smallest coherent code changes |
+| [clarify-requirements](skills/clarify-requirements/) | `/clarify-requirements` | Focused clarification for ambiguous engineering requirements |
+| [generate-agentic-prompt](skills/generate-agentic-prompt/) | `/generate-agentic-prompt` | Interactive compiler for structured implementation prompts |
+| [git_commit](skills/git_commit/) | `/git_commit` | Conventional Commit helper for staged changes |
+
+## Embedded and Zephyr
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| [rtt-tools](skills/rtt-tools/) | `/rtt-tools` | SEGGER J-Link RTT capture and interactive console for Zephyr targets |
+| [zephyr-clangd](skills/zephyr-clangd/) | `/zephyr-clangd` | clangd/LSP configuration for Zephyr and nRF Connect SDK |
+| [zephyr-testing](skills/zephyr-testing/) | `/zephyr-testing` | Zephyr testing with Ztest, Twister, native_sim, QEMU, and hardware |
+
+## Debugging
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| [mcu-gdb-debugger](skills/mcu-gdb-debugger/) | `/mcu-gdb-debugger` | MCU firmware debugging with GDB and gdbserver backends |
+| [linux-gdb-debugger](skills/linux-gdb-debugger/) | `/linux-gdb-debugger` | Linux user-space C/C++ debugging for crashes, core dumps, and hangs |
+
+## Visualization
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| [mermaid-layout](skills/mermaid-layout/) | `/mermaid-layout` | Mermaid diagram layout and topology optimization |
+
+## Self-Hosting and Server Administration
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| [server-admin](skills/server-admin/) | `/server-admin` | Privacy-conscious SSH, PVE, LXC, VM, service, backup, and deployment operations |
+| [pve-palworld-server-config](skills/pve-palworld-server-config/) | `/pve-palworld-server-config` | Safe Palworld dedicated-server configuration changes inside a Proxmox LXC |
+| [palworld-save-migration](skills/palworld-save-migration/) | `/palworld-save-migration` | Palworld co-op-to-dedicated-server save and player ownership migration |
 
 ## Installation
 
@@ -37,26 +64,33 @@ Or configure manually in `~/.claude/settings.json`:
 
 ### External Dependencies
 
-Some skills require additional tools on your system:
+Some skills require additional tools or access on your system:
 
 | Skill | Requirements |
 |-------|-------------|
 | rtt-tools | Python 3, SEGGER J-Link software (`JLinkGDBServer`), GDB |
-| mcu-gdb-debugger | Cross GDB (e.g. `arm-none-eabi-gdb`), a gdbserver backend (OpenOCD, pyOCD, J-Link GDB Server, etc.) |
+| zephyr-clangd | clangd, a Zephyr/NCS build with `compile_commands.json`, and the matching compiler |
+| zephyr-testing | Zephyr `west`, Twister, pytest, and any target-specific simulator or hardware |
+| mcu-gdb-debugger | Cross GDB, a gdbserver backend, and the target/probe or QEMU |
 | linux-gdb-debugger | GDB |
 | git_commit | Git |
-| generate-agentic-prompt | None |
+| server-admin | A configured SSH alias; private inventory is optional for generic examples but required by the homelab workflow |
+| pve-palworld-server-config | SSH access to the verified Proxmox host, `pct`, systemd, Python 3, and a Palworld server |
+| palworld-save-migration | SSH access, Python 3, PalworldSaveTools, and its local `palooz` compression extension |
+| generate-agentic-prompt, clarify-requirements, codebase-first-engineering, mermaid-layout | None |
 
 ## Usage
 
 Invoke any skill via slash command in Claude Code:
 
-```
-/rtt-tools capture --elf build/zephyr/zephyr.elf
-/git_commit
-/linux-gdb-debugger
+```text
+/zephyr-testing
 /mcu-gdb-debugger
-/generate-agentic-prompt
+/linux-gdb-debugger
+/server-admin
+/pve-palworld-server-config
+/palworld-save-migration
+/git_commit
 ```
 
 ## Testing
