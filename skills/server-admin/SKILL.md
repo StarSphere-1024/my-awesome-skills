@@ -32,7 +32,34 @@ Never read or request private key contents, passwords, tokens, or other credenti
 - Prefer passphrase-protected human keys loaded into the local `ssh-agent`; this preserves unattended connections after the user unlocks the key once without storing a passphrase in files.
 - For genuinely unattended agent work, use a separate per-host automation key only when necessary. Keep its ACL restricted, scope it to the minimum account and operations, and avoid root access where possible.
 - Do not reuse one key across unrelated hosts or services. Do not remove a passphrase merely to avoid an interaction.
-- If the required key is not loaded in `ssh-agent`, use `ask` when available to tell the user how to unlock or add it, then wait. Never request or handle the passphrase directly.
+- If the required key is not loaded in the `ssh-agent` visible to the current execution environment, use `ask` when available to tell the user how to unlock or add it, then wait. Never request or handle the passphrase directly.
+
+### SSH agent handoff
+
+The user's terminal and the assistant's command process may not share environment variables. Loading a key in one shell does not make it visible to the other shell. Do not start a second agent in the assistant process after the user has already loaded a key.
+
+Ask the user to run this in the interactive terminal where the passphrase may be entered, replacing `KEY` with the `IdentityFile` selected from the SSH config:
+
+```bash
+if [ -z "${SSH_AUTH_SOCK:-}" ] || ! ssh-add -l >/dev/null 2>&1; then
+  eval "$(ssh-agent -s)"
+fi
+ssh-add ~/.ssh/KEY
+ssh-add -l
+printf '%s\n' "$SSH_AUTH_SOCK"
+```
+
+The user may provide only the agent socket path. Never request or accept a private key, passphrase, or token. Treat the socket path as a temporary capability: validate it is a user-owned Unix socket, pass it only through a per-command `SSH_AUTH_SOCK` environment variable, and do not write it to the inventory, skill, shell profile, logs, or backups.
+
+Before a non-interactive operation, validate the handoff and authentication without contacting a service:
+
+```bash
+test -S "$SSH_AUTH_SOCK"
+SSH_AUTH_SOCK="$SOCKET" ssh-add -l
+SSH_AUTH_SOCK="$SOCKET" ssh -o BatchMode=yes -o ConnectTimeout=10 "$ALIAS" true
+```
+
+If the handoff is unavailable or validation fails, stop and give the user the exact local unlock steps. Never fall back to `ssh -i` with a passphrase-protected key, disable host-key checking, or assume that a user confirmation made the agent visible.
 
 ## Device and service routing
 
